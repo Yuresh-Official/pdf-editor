@@ -20,7 +20,7 @@
             padding: 10px;
             background: #e2e8f0;
             border-radius: 8px;
-            max-height: calc(100vh - 160px);
+            max-height: calc(100vh - 240px);
         }
 
         #viewer-container {
@@ -69,17 +69,12 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
 
-        .dropped-image, .pdf-image-eraser {
+        .dropped-image {
             position: absolute;
             cursor: move;
             border: 2px dashed #10b981;
             z-index: 30;
             touch-action: none;
-        }
-        
-        .pdf-image-eraser {
-            border: 2px dashed #ef4444;
-            background: rgba(255, 255, 255, 0.9); /* සාදන විටම සුදු පැහැයෙන් දිස්වේ */
         }
 
         .image-delete-btn {
@@ -88,7 +83,29 @@
             background: #ef4444; color: white;
             border-radius: 50%; width: 22px; height: 22px;
             font-size: 12px; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; z-index: 31; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            cursor: pointer; z-index: 32; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* පින්තූරය ලොකු කුඩා කරන Handle එක */
+        .image-resize-handle {
+            position: absolute;
+            bottom: -5px; right: -5px;
+            width: 12px; height: 12px;
+            background: #2563eb;
+            border: 1px solid white;
+            cursor: se-resize;
+            z-index: 32;
+            border-radius: 2px;
+        }
+
+        #drop-zone {
+            border: 2px dashed #3b82f6;
+            background: #eff6ff;
+            transition: all 0.2s ease;
+        }
+        #drop-zone.dragover {
+            background: #dbeafe;
+            border-color: #1d4ed8;
         }
     </style>
 </head>
@@ -107,9 +124,9 @@
                 📷 Add Image
             </button>
 
-            <!-- Erase Mode Toggle Button -->
+            <!-- Pencil Eraser Mode Button -->
             <button id="erase-toggle-btn" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition shadow-md disabled:opacity-50" disabled>
-                🧼 Erase Mode: OFF
+                ✏️ Pencil Eraser: OFF
             </button>
             
             <button id="download-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-md text-sm font-semibold transition shadow-md disabled:opacity-50" disabled>
@@ -118,13 +135,18 @@
         </div>
     </div>
 
-    <!-- Instruction Subbar -->
-    <div class="bg-amber-50 border-b border-amber-200 p-2 text-center text-xs text-amber-900 font-medium">
-        💡 <b>වැදගත්:</b> පින්තූර හෝ ලෝගෝ මකන්න අවශ්‍ය නම් <b>🧼 Erase Mode: ON</b> කර PDF එක මත ක්ලික් කරන්න. සාදන ලද සුදු කොටු එවලේම ❌ බටන් එකෙන් අයින් කළ හැක!
+    <!-- Image Drop Zone & Instructions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 p-2 bg-slate-100 border-b border-slate-200">
+        <div id="drop-zone" class="p-3 text-center rounded-lg text-sm font-medium text-blue-700 flex items-center justify-center cursor-pointer">
+            📥 Drop Images Here to Insert into PDF (or Click to Select)
+        </div>
+        <div class="bg-amber-50 rounded-lg p-3 text-xs text-amber-950 font-medium flex items-center">
+            💡 <b>භාවිතය:</b> 1. <b>✏️ Eraser Mode ON</b> කර පෑනෙන් මෙන් අඳින්න (පසුබිම් පාටෙන්ම මැකී යයි). 2. පින්තූරයේ දකුණු පස පහළ ඇති <b>නිල් කොටුවෙන් ඇද</b> ලොකු/කුඩා (Resize) කරන්න.
+        </div>
     </div>
 
     <!-- Workspace Area -->
-    <div class="flex-1 p-2 sm:p-6 w-full flex justify-center items-start">
+    <div class="flex-1 p-2 sm:p-4 w-full flex justify-center items-start">
         <div id="editor-workspace" class="w-full max-w-4xl flex justify-center">
             <div id="placeholder" class="text-center mt-10 p-8 border-4 border-dashed border-gray-300 rounded-2xl max-w-md bg-white shadow-sm w-full">
                 <p class="text-gray-500 font-medium text-base">කරුණාකර වැඩ අරඹන්න PDF එකක් තෝරන්න...</p>
@@ -133,7 +155,7 @@
             <div id="scroll-box" class="workspace-scroll-container hidden">
                 <div id="viewer-container">
                     <div class="pdf-page-wrapper" id="page-wrapper">
-                        <canvas id="pdf-canvas"></canvas>
+                        <canvas id="pdf-canvas" style="position: relative; z-index: 10;"></canvas>
                         <div id="text-layer" class="text-layer"></div>
                     </div>
                 </div>
@@ -151,8 +173,10 @@
 
         let textEdits = {}; 
         let imageEdits = []; 
-        let imageErasers = {}; // ID මඟින් Eraser Blocks ට්‍රැක් කිරීමට Object එකක් ලෙස වෙනස් කරන ලදී
-        let isEraseModeActive = false; // Erase mode තත්ත්වය ට්‍රැක් කිරීමට
+        let eraseDrawings = []; 
+        let isEraseModeActive = false; 
+        let isDrawing = false;
+        let currentStroke = null;
 
         const pdfUpload = document.getElementById('pdf-upload');
         const imageUpload = document.getElementById('image-upload');
@@ -166,6 +190,7 @@
         const ctx = canvas.getContext('2d');
         const textLayerDiv = document.getElementById('text-layer');
         const pageWrapper = document.getElementById('page-wrapper');
+        const dropZone = document.getElementById('drop-zone');
 
         pdfUpload.addEventListener('change', async (e) => {
             const file = e.target.files[0];
@@ -176,12 +201,13 @@
                 originalBytes = new Uint8Array(this.result);
                 textEdits = {};
                 imageEdits = [];
-                imageErasers = {};
+                eraseDrawings = [];
                 isEraseModeActive = false;
-                eraseToggleBtn.innerText = "🧼 Erase Mode: OFF";
+                eraseToggleBtn.innerText = "✏️ Pencil Eraser: OFF";
                 eraseToggleBtn.className = "bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition shadow-md";
+                textLayerDiv.style.zIndex = '20';
                 
-                document.querySelectorAll('.dropped-image, .editable-input, .pdf-image-eraser').forEach(el => el.remove());
+                document.querySelectorAll('.dropped-image, .editable-input').forEach(el => el.remove());
                 
                 await renderPdfPage();
                 downloadBtn.disabled = false;
@@ -193,15 +219,17 @@
             reader.readAsArrayBuffer(file);
         });
 
-        // Erase Mode එක ON/OFF කරන බටන් එකේ ක්‍රියාකාරීත්වය
         eraseToggleBtn.addEventListener('click', () => {
             isEraseModeActive = !isEraseModeActive;
             if (isEraseModeActive) {
-                eraseToggleBtn.innerText = "🧼 Erase Mode: ON";
+                eraseToggleBtn.innerText = "✏️ Pencil Eraser: ON";
                 eraseToggleBtn.className = "bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition shadow-md animate-pulse";
+                // පැන්සල වැඩ කිරීමට Text layer එක පසුපසට යවයි
+                textLayerDiv.style.zIndex = '5';
             } else {
-                eraseToggleBtn.innerText = "🧼 Erase Mode: OFF";
+                eraseToggleBtn.innerText = "✏️ Pencil Eraser: OFF";
                 eraseToggleBtn.className = "bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition shadow-md";
+                textLayerDiv.style.zIndex = '20';
             }
         });
 
@@ -223,9 +251,7 @@
             await page.render(renderContext).promise;
 
             textLayerDiv.innerHTML = '';
-            
-            // ක්ලික් එකකින් සුදු කොටු (Eraser) සෑදීමේ ලිස්නර් එක
-            viewerContainer.addEventListener('click', handleCanvasImageClick);
+            setupPencilEraserLogic(); 
 
             const textContent = await page.getTextContent();
             let idx = 0;
@@ -250,9 +276,7 @@
                 const isFontBold = item.fontName.toLowerCase().includes('bold') || item.fontName.toLowerCase().includes('goth') || item.fontName.toLowerCase().includes('black');
 
                 span.addEventListener('click', (e) => {
-                    // Erase mode එක ON වෙලා තියෙන වෙලාවට Text edit කරන්න දෙන්න එපා
                     if (isEraseModeActive) return;
-
                     e.stopPropagation();
                     
                     const bgPixel = ctx.getImageData(tx[4] + 1, computedTop + 1, 1, 1).data;
@@ -282,7 +306,6 @@
                     }
 
                     const textRGB = `rgb(${textR}, ${textG}, ${textB})`;
-
                     const currentActiveText = textEdits[span.id] ? textEdits[span.id].rawInput : (isFontBold ? `*${item.str}*` : item.str);
 
                     createInputOverlay(span, item, tx[4], computedTop, bgRGB, bgPixel, textRGB, textR, textG, textB, isFontBold, currentActiveText);
@@ -354,94 +377,103 @@
             input.addEventListener('blur', saveEdits);
         }
 
-        // --- Erase Mode එක ON නම් පමණක් සුදු කොටු සෑදීමේ විශේෂාංගය ---
-        function handleCanvasImageClick(e) {
-            // Erase Mode එක ON නැත්නම් කිසිවක් කරන්න එපා
-            if (!isEraseModeActive) return;
-            if (e.target.tagName === 'SPAN' || e.target.classList.contains('editable-input') || e.target.closest('.dropped-image') || e.target.classList.contains('image-delete-btn')) return;
+        // --- 🧼 Smart Pencil Eraser Logic ---
+        function setupPencilEraserLogic() {
+            const getPos = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return { x: clientX - rect.left, y: clientY - rect.top };
+            };
 
-            const rect = viewerContainer.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const clickY = e.clientY - rect.top;
-
-            const eraserId = 'erase_' + Date.now();
-            const eraser = document.createElement('div');
-            eraser.className = 'pdf-image-eraser';
-            eraser.id = eraserId;
-            eraser.style.left = `${clickX - 40}px`;
-            eraser.style.top = `${clickY - 40}px`;
-            eraser.style.width = '80px';
-            eraser.style.height = '80px';
-
-            const deleteBtn = document.createElement('div');
-            deleteBtn.className = 'image-delete-btn';
-            deleteBtn.innerText = '❌';
-            
-            // සුදු කොටුව සම්පූර්ණයෙන්ම මකා දැමීමේ බලය (Remove Eraser block completely)
-            deleteBtn.onclick = (ev) => {
-                ev.stopPropagation();
-                eraser.remove(); // Screen එකෙන් අයින් කරනවා
-                delete imageErasers[eraserId]; // සේව් කරපු ලිස්ට් එකෙන් අයින් කරනවා
+            const startDrawing = (e) => {
+                if (!isEraseModeActive) return;
+                isDrawing = true;
+                const pos = getPos(e);
                 
-                // Canvas එක නැවත මුල් තත්වයට පත් කිරීමට (Re-render)
-                renderPdfPage();
-            };
-            
-            eraser.appendChild(deleteBtn);
-            pageWrapper.appendChild(eraser);
+                const pixel = ctx.getImageData(pos.x, pos.y, 1, 1).data;
+                const colorRGB = `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
 
-            // සේව් කර ගන්නවා PDF එක බාගන්නා විට සුදු කරන්න
-            imageErasers[eraserId] = {
-                x: (clickX - 40) / pdfScale,
-                y: originalPageHeight - ((clickY + 40) / pdfScale),
-                w: 80 / pdfScale,
-                h: 80 / pdfScale
+                currentStroke = {
+                    color: { r: pixel[0]/255, g: pixel[1]/255, b: pixel[2]/255 },
+                    points: [{ x: pos.x / pdfScale, y: originalPageHeight - (pos.y / pdfScale) }]
+                };
+
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+                ctx.lineWidth = 16; 
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.strokeStyle = colorRGB;
             };
 
-            setupDragSupport(eraser, (nl, nt) => {
-                imageErasers[eraserId].x = nl / pdfScale;
-                imageErasers[eraserId].y = originalPageHeight - ((nt + eraser.offsetHeight) / pdfScale);
-            });
+            const draw = (e) => {
+                if (!isDrawing || !isEraseModeActive) return;
+                e.preventDefault();
+                const pos = getPos(e);
+
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+
+                currentStroke.points.push({ x: pos.x / pdfScale, y: originalPageHeight - (pos.y / pdfScale) });
+            };
+
+            const stopDrawing = () => {
+                if (!isDrawing) return;
+                isDrawing = false;
+                if (currentStroke && currentStroke.points.length > 0) {
+                    eraseDrawings.push(currentStroke);
+                }
+                currentStroke = null;
+            };
+
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            window.addEventListener('mouseup', stopDrawing);
+
+            canvas.addEventListener('touchstart', startDrawing, { passive: false });
+            canvas.addEventListener('touchmove', draw, { passive: false });
+            window.addEventListener('touchend', stopDrawing);
         }
 
-        // --- පින්තූර එකතු කිරීමේ විශේෂාංග ---
+        // --- 📥 Photo Drop & Resize Logic ---
+        dropZone.addEventListener('click', () => imageUpload.click());
         addImageBtn.addEventListener('click', () => imageUpload.click());
-        imageUpload.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => createImageOverlay(event.target.result, 100, 100);
-                reader.readAsDataURL(file);
-            }
+
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleImageFiles(e.dataTransfer.files, 80, 80);
         });
 
-        viewerContainer.addEventListener('dragover', (e) => e.preventDefault());
-        viewerContainer.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const files = e.dataTransfer.files;
+        imageUpload.addEventListener('change', (e) => {
+            handleImageFiles(e.target.files, 80, 80);
+        });
+
+        function handleImageFiles(files, x, y) {
             if (files.length > 0 && files[0].type.startsWith('image/')) {
                 const reader = new FileReader();
-                reader.onload = (event) => {
-                    const rect = viewerContainer.getBoundingClientRect();
-                    createImageOverlay(event.target.result, e.clientX - rect.left, e.clientY - rect.top);
-                };
+                reader.onload = (event) => createImageOverlay(event.target.result, x, y);
                 reader.readAsDataURL(files[0]);
             }
-        });
+        }
 
         function createImageOverlay(base64Src, x, y) {
             const imgId = 'img_' + Date.now();
             const wrapper = document.createElement('div');
             wrapper.className = 'dropped-image';
             wrapper.id = imgId;
-            wrapper.style.left = `${x - 50}px`;
-            wrapper.style.top = `${y - 50}px`;
-            wrapper.style.width = '100px';
-            wrapper.style.height = '100px';
+            wrapper.style.left = `${x}px`;
+            wrapper.style.top = `${y}px`;
+            wrapper.style.width = '120px'; // Default Size
+            wrapper.style.height = '120px';
 
             const img = document.createElement('img');
             img.src = base64Src;
             img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'contain';
+            img.style.pointerEvents = 'none';
             wrapper.appendChild(img);
 
             const deleteBtn = document.createElement('div');
@@ -452,58 +484,100 @@
                 imageEdits = imageEdits.filter(i => i.id !== imgId);
             };
             wrapper.appendChild(deleteBtn);
+
+            // Resize Handle එක එකතු කිරීම
+            const resizeHandle = document.createElement('div');
+            resizeHandle.className = 'image-resize-handle';
+            wrapper.appendChild(resizeHandle);
+            
             pageWrapper.appendChild(wrapper);
 
             const currentEdit = {
                 id: imgId,
-                x: (x - 50) / pdfScale,
-                y: originalPageHeight - ((y + 50) / pdfScale),
-                w: 100 / pdfScale,
-                h: 100 / pdfScale,
+                x: x / pdfScale,
+                y: originalPageHeight - ((y + 120) / pdfScale),
+                w: 120 / pdfScale,
+                h: 120 / pdfScale,
                 src: base64Src
             };
             imageEdits.push(currentEdit);
 
-            setupDragSupport(wrapper, (nl, nt) => {
+            // Drag & Resize සක්‍රීය කිරීම
+            setupDragAndResize(wrapper, resizeHandle, (nl, nt, nw, nh) => {
                 currentEdit.x = nl / pdfScale;
-                currentEdit.y = originalPageHeight - ((nt + wrapper.offsetHeight) / pdfScale);
+                currentEdit.y = originalPageHeight - ((nt + nh) / pdfScale);
+                currentEdit.w = nw / pdfScale;
+                currentEdit.h = nh / pdfScale;
             });
         }
 
-        function setupDragSupport(element, onDragCallback) {
-            const dragStart = (e) => {
-                if (e.target.classList.contains('image-delete-btn')) return;
-                let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-                let clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-                let startX = clientX, startY = clientY;
+        function setupDragAndResize(element, handle, onUpdateCallback) {
+            // Drag කිරීමේ පාලනය
+            element.addEventListener('mousedown', (e) => {
+                if (e.target === handle || e.target.classList.contains('image-delete-btn')) return;
+                let startX = e.clientX, startY = e.clientY;
 
-                const dragMove = (ev) => {
-                    let curX = ev.type.includes('touch') ? ev.touches[0].clientX : ev.clientX;
-                    let curY = ev.type.includes('touch') ? ev.touches[0].clientY : ev.clientY;
-                    let dx = curX - startX, dy = curY - startY;
+                const moveHandler = (ev) => {
+                    let dx = ev.clientX - startX, dy = ev.clientY - startY;
                     let nl = element.offsetLeft + dx, nt = element.offsetTop + dy;
-                    
                     element.style.left = nl + 'px'; element.style.top = nt + 'px';
-                    startX = curX; startY = curY;
-                    
-                    onDragCallback(nl, nt);
+                    startX = ev.clientX; startY = ev.clientY;
+                    onUpdateCallback(nl, nt, element.offsetWidth, element.offsetHeight);
                 };
+                const endHandler = () => { document.removeEventListener('mousemove', moveHandler); document.removeEventListener('mouseup', endHandler); };
+                document.addEventListener('mousemove', moveHandler); document.addEventListener('mouseup', endHandler);
+            });
 
-                const dragEnd = () => {
-                    document.removeEventListener('mousemove', dragMove);
-                    document.removeEventListener('mouseup', dragEnd);
-                    document.removeEventListener('touchmove', dragMove);
-                    document.removeEventListener('touchend', dragEnd);
+            // Resize කිරීමේ පාලනය (ලොකු කුඩා කිරීම)
+            handle.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                let startX = e.clientX, startY = e.clientY;
+                let startW = element.offsetWidth, startH = element.offsetHeight;
+
+                const resizeMoveHandler = (ev) => {
+                    let nw = startW + (ev.clientX - startX);
+                    let nh = startH + (ev.clientY - startY);
+                    if (nw > 20 && nh > 20) {
+                        element.style.width = nw + 'px';
+                        element.style.height = nh + 'px';
+                        onUpdateCallback(element.offsetLeft, element.offsetTop, nw, nh);
+                    }
                 };
+                const resizeEndHandler = () => { document.removeEventListener('mousemove', resizeMoveHandler); document.removeEventListener('mouseup', resizeEndHandler); };
+                document.addEventListener('mousemove', resizeMoveHandler); document.addEventListener('mouseup', resizeEndHandler);
+            });
 
-                document.addEventListener('mousemove', dragMove);
-                document.addEventListener('mouseup', dragEnd);
-                document.addEventListener('touchmove', dragMove, { passive: false });
-                document.addEventListener('touchend', dragEnd);
-            };
+            // Touch (Mobile) සපෝට් එක
+            element.addEventListener('touchstart', (e) => {
+                if (e.target === handle || e.target.classList.contains('image-delete-btn')) return;
+                let startX = e.touches[0].clientX, startY = e.touches[0].clientY;
+                const touchMove = (ev) => {
+                    let dx = ev.touches[0].clientX - startX, dy = ev.touches[0].clientY - startY;
+                    let nl = element.offsetLeft + dx, nt = element.offsetTop + dy;
+                    element.style.left = nl + 'px'; element.style.top = nt + 'px';
+                    startX = ev.touches[0].clientX; startY = ev.touches[0].clientY;
+                    onUpdateCallback(nl, nt, element.offsetWidth, element.offsetHeight);
+                };
+                const touchEnd = () => { document.removeEventListener('touchmove', touchMove); document.removeEventListener('touchend', touchEnd); };
+                document.addEventListener('touchmove', touchMove, { passive: false }); document.addEventListener('touchend', touchEnd);
+            }, { passive: true });
 
-            element.addEventListener('mousedown', dragStart);
-            element.addEventListener('touchstart', dragStart, { passive: true });
+            handle.addEventListener('touchstart', (e) => {
+                e.stopPropagation(); e.preventDefault();
+                let startX = e.touches[0].clientX, startY = e.touches[0].clientY;
+                let startW = element.offsetWidth, startH = element.offsetHeight;
+                const touchResizeMove = (ev) => {
+                    let nw = startW + (ev.touches[0].clientX - startX);
+                    let nh = startH + (ev.touches[0].clientY - startY);
+                    if (nw > 20 && nh > 20) {
+                        element.style.width = nw + 'px'; element.style.height = nh + 'px';
+                        onUpdateCallback(element.offsetLeft, element.offsetTop, nw, nh);
+                    }
+                };
+                const touchResizeEnd = () => { document.removeEventListener('touchmove', touchResizeMove); document.removeEventListener('touchend', touchResizeEnd); };
+                document.addEventListener('touchmove', touchResizeMove, { passive: false }); document.addEventListener('touchend', touchResizeEnd);
+            }, { passive: false });
         }
 
         function base64ToArrayBuffer(base64DataUrl) {
@@ -511,9 +585,7 @@
             const binaryStr = window.atob(base64Str);
             const len = binaryStr.length;
             const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryStr.charCodeAt(i);
-            }
+            for (let i = 0; i < len; i++) { bytes[i] = binaryStr.charCodeAt(i); }
             return bytes.buffer;
         }
 
@@ -528,21 +600,22 @@
                 const helveticaFont = await pdfDocInstance.embedFont(StandardFonts.Helvetica);
                 const helveticaBoldFont = await pdfDocInstance.embedFont(StandardFonts.HelveticaBold);
 
-                // 1. ඇත්තටම ඉතිරි කරපු සුදු කොටු විතරක් PDF එකෙන් මකා දැමීම
-                Object.values(imageErasers).forEach(eraser => {
-                    firstPage.drawRectangle({
-                        x: eraser.x,
-                        y: eraser.y,
-                        width: eraser.w,
-                        height: eraser.h,
-                        color: rgb(1, 1, 1), 
-                    });
+                // 1. Eraser Lines PDF එක මත ඇඳීම
+                eraseDrawings.forEach(stroke => {
+                    for (let i = 0; i < stroke.points.length - 1; i++) {
+                        firstPage.drawLine({
+                            start: { x: stroke.points[i].x, y: stroke.points[i].y },
+                            end: { x: stroke.points[i+1].x, y: stroke.points[i+1].y },
+                            thickness: 14,
+                            color: rgb(stroke.color.r, stroke.color.g, stroke.color.b),
+                            lineCap: 'round'
+                        });
+                    }
                 });
 
                 // 2. Text Edits ඇතුළත් කිරීම
                 Object.values(textEdits).forEach(edit => {
                     const cleanText = edit.newText.replace(/[^\x20-\x7E]/g, '');
-
                     firstPage.drawRectangle({
                         x: edit.x,
                         y: edit.y - 2,
@@ -550,7 +623,6 @@
                         height: edit.originalHeight * 1.3,
                         color: rgb(edit.bgColor.r, edit.bgColor.g, edit.bgColor.b),
                     });
-                    
                     if(cleanText.length > 0) {
                         firstPage.drawText(cleanText, {
                             x: edit.x,
@@ -562,7 +634,7 @@
                     }
                 });
 
-                // 3. අලුත් පින්තූර ඇතුළත් කිරීම
+                // 3. Resize කරන ලද අලුත් පින්තූර ඇතුළත් කිරීම
                 for (const imgEdit of imageEdits) {
                     const imgDataBytes = base64ToArrayBuffer(imgEdit.src);
                     const embeddedImg = imgEdit.src.includes('image/png') ? 
@@ -580,7 +652,7 @@
                 const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
-                link.download = "perfect_edited_document.pdf";
+                link.download = "final_edited_document.pdf";
                 link.click();
             } catch (err) {
                 console.error("PDF Compiling Error: ", err);
@@ -590,4 +662,3 @@
     </script>
 </body>
 </html>
-
