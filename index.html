@@ -95,7 +95,6 @@
         .custom-text-box { border: 2px dashed #8b5cf6; background: rgba(255,255,255,0.85); }
 
         .dropped-image.locked { border: 2px solid transparent; background: transparent; }
-        /* Matches page background seamlessly when locked */
         .custom-text-box.locked { border: 2px solid transparent; background: transparent; }
 
         .dropped-image.locked:hover { border: 2px dashed #3b82f6; }
@@ -420,7 +419,6 @@
             input.addEventListener('blur', saveEdits);
         }
 
-        // 100% Fixed Eraser Engine
         function setupCanvasEraser() {
             const getCanvasCoords = (e) => {
                 const rect = canvas.getBoundingClientRect();
@@ -480,7 +478,6 @@
             window.addEventListener('touchend', finishEraseStroke);
         }
 
-        // Image Engine
         dropZone.addEventListener('click', () => imageUpload.click());
         addImageBtn.addEventListener('click', () => imageUpload.click());
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -567,7 +564,6 @@
             });
         }
 
-        // Multi-line Custom Textbox Generator with auto color matching
         addTextboxBtn.addEventListener('click', () => {
             const boxId = 'box_' + Date.now();
             const wrapper = document.createElement('div');
@@ -613,7 +609,6 @@
 
             pageWrapper.appendChild(wrapper);
 
-            // Automatically detect background text color under textbox placement
             let detectedTextR = 0, detectedTextG = 0, detectedTextB = 0;
             const updateTextColorBasedOnBackground = () => {
                 const sampleX = wrapper.offsetLeft + 10;
@@ -621,7 +616,6 @@
                 const bgPixel = ctx.getImageData(sampleX, sampleY, 1, 1).data;
                 const brightness = (bgPixel[0] * 299 + bgPixel[1] * 587 + bgPixel[2] * 114) / 1000;
                 
-                // If light background -> text is black, if dark background -> text is white
                 if (brightness > 128) {
                     detectedTextR = 0; detectedTextG = 0; detectedTextB = 0;
                 } else {
@@ -649,7 +643,7 @@
                 e.stopPropagation();
                 if(!textarea.value.trim()){ wrapper.remove(); return; }
                 
-                updateTextColorBasedOnBackground(); // Recalculate colors just before locking
+                updateTextColorBasedOnBackground(); 
                 textBoxObj.textColor = { r: detectedTextR / 255, g: detectedTextG / 255, b: detectedTextB / 255 };
 
                 wrapper.classList.add('locked');
@@ -679,7 +673,6 @@
             });
         });
 
-        // Universal Movements Handler
         function setupDraggableInteractions(element, handle, onUpdate) {
             const startDrag = (e) => {
                 if (element.classList.contains('locked') || e.target === handle || e.target.classList.contains('action-btn') || e.target.tagName === 'TEXTAREA') return;
@@ -744,7 +737,9 @@
             return uint8Array.buffer;
         }
 
-        // Export Compilation Downloader
+        /* -------------------------------------------------------------
+           FIXED EXPORT COMPILATION DOWNLOADER
+           ------------------------------------------------------------- */
         downloadBtn.addEventListener('click', async () => {
             if (!originalBytes) return;
             try {
@@ -785,7 +780,7 @@
                     }
                 });
 
-                // 3. Render Custom Multi-line Text Boxes with Auto Colors and Bold Parsing
+                // 3. Render Custom Multi-line Text Boxes
                 customTextBoxes.forEach(box => {
                     if (!box.text.trim()) return;
                     
@@ -797,7 +792,6 @@
                             let cleanLine = lineText;
                             let drawFont = cvFont;
 
-                            // WhatsApp Bold Engine inside Multiline Textbox: Parses *text* patterns dynamically
                             if (lineText.startsWith('*') && lineText.endsWith('*') && lineText.length > 1) {
                                 cleanLine = lineText.substring(1, lineText.length - 1);
                                 drawFont = cvFontBold;
@@ -827,21 +821,41 @@
                     });
                 }
 
+                // Generate PDF Bytes
                 const finalPdfBytes = await pdfDocInstance.save();
-                const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
                 
+                // --- FIXED DOWNLOAD LOGIC ---
+                // Clean and normalize filename input to safely support unicode/sinhala names
                 let filename = pdfFilenameInput.value.trim();
-                if(!filename) filename = "studio_fixed_output";
-                if(!filename.endsWith(".pdf")) filename += ".pdf";
+                if (!filename) filename = "studio_fixed_output";
+                
+                // Ensure extension is exactly .pdf
+                if (!filename.toLowerCase().endsWith(".pdf")) {
+                    filename += ".pdf";
+                }
 
+                // Create and trigger the safe download link mechanism
+                const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
+                const downloadUrl = URL.createObjectURL(blob);
                 const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
+                
+                link.href = downloadUrl;
                 link.download = filename;
+                
+                // Append temporarily to DOM to guarantee compliance on all browsers (Firefox/Safari/Chrome)
+                document.body.appendChild(link);
                 link.click();
+                
+                // Cleanup resource memory after trigger
+                document.body.removeChild(link);
+                setTimeout(() => URL.revokeObjectURL(downloadUrl), 100);
+
             } catch (err) {
-                alert("PDF එක සකස් කිරීමේදී ගැටලුවක් මතු විය.");
+                console.error(err);
+                alert("PDF එක සකස් කිරීමේදී හෝ ඩවුන්ලෝඩ් කිරීමේදී ගැටලුවක් මතු විය.");
             }
         });
     </script>
 </body>
 </html>
+
