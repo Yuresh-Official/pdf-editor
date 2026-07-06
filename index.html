@@ -3,222 +3,386 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced PDF Editor</title>
-    <!-- Tailwind CSS for Styling -->
+    <title>Sejda-Style PDF Editor</title>
+    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- pdf-lib Library for PDF Manipulation -->
+    <!-- PDF.js for rendering and text layer detection -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <!-- PDF-Lib for generating and saving the modified PDF -->
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <style>
-        #canvas-container {
+        body { background-color: #f3f4f6; }
+        #viewer-container {
             position: relative;
-            border: 2px dashed #ccc;
-            display: inline-block;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            overflow: hidden;
         }
-        .draggable {
+        .pdf-page-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        .text-layer {
+            position: absolute;
+            left: 0; top: 0; right: 0; bottom: 0;
+            overflow: hidden;
+            opacity: 1;
+            line-height: 1.0;
+        }
+        .text-layer span {
+            color: transparent;
+            position: absolute;
+            white-space: pre;
+            cursor: text;
+            transform-origin: 0% 0%;
+        }
+        .editable-input {
+            position: absolute;
+            border: 2px solid #3b82f6;
+            background: rgba(255, 255, 255, 0.95);
+            color: #000;
+            font-family: sans-serif;
+            font-weight: bold;
+            outline: none;
+            z-index: 50;
+            padding: 0px 2px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .dropped-image {
             position: absolute;
             cursor: move;
+            border: 2px dashed #10b981;
             user-select: none;
-            background: rgba(255, 255, 255, 0.8);
-            border: 1px dashed #3b82f6;
-            padding: 2px;
+            z-index: 40;
+        }
+        .image-delete-btn {
+            position: absolute;
+            top: -10px; right: -10px;
+            background: #ef4444; color: white;
+            border-radius: 50%; width: 20px; height: 20px;
+            font-size: 12px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 41; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen font-sans">
+<body class="min-h-screen flex flex-col">
 
-    <div class="container mx-auto p-6">
-        <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">PDF Editor & Modifier</h1>
-        
-        <!-- Controls Toolbar -->
-        <div class="bg-white p-4 rounded-lg shadow-md mb-6 flex flex-wrap gap-4 items-center justify-between">
-            <div class="flex items-center gap-2">
-                <input type="file" id="pdf-upload" accept=".pdf" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
-            </div>
-            
-            <div class="flex flex-wrap gap-2">
-                <input type="text" id="text-input" placeholder="මෙතන ලියන්න..." class="border rounded px-3 py-2 text-sm w-48 focus:outline-blue-500">
-                <button id="add-text-btn" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 transition">Text එකක් දාන්න</button>
-                <button id="erase-mode-btn" class="bg-red-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-red-600 transition">අකුරු මකන්න (Whiteout)</button>
-                <button id="download-btn" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-700 transition">PDF එක බාගන්න</button>
-            </div>
+    <!-- Top Navbar -->
+    <div class="bg-slate-800 text-white p-4 shadow-md flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <span class="text-xl font-bold tracking-wide text-blue-400">Sejda-Style PDF Editor</span>
         </div>
-
-        <!-- Editor Area -->
-        <div class="text-center">
-            <div id="canvas-container" class="bg-white shadow-lg rounded hidden">
-                <canvas id="pdf-canvas"></canvas>
-            </div>
-            <p id="placeholder-text" class="text-gray-500 mt-20">කරුණාකර PDF එකක් අප්ලෝඩ් කරන්න...</p>
+        <div class="flex items-center gap-4 flex-wrap">
+            <input type="file" id="pdf-upload" accept=".pdf" class="text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"/>
+            <button id="download-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-md text-sm font-semibold transition shadow-md disabled:opacity-50" disabled>
+                Download Modified PDF
+            </button>
         </div>
     </div>
 
-    <!-- PDF Rendering with PDF.js (CDN) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <!-- Instruction Bar -->
+    <div class="bg-blue-50 border-b border-blue-200 p-3 text-center text-sm text-blue-800 font-medium flex justify-center gap-6">
+        <div>📝 <span class="font-bold">Text Edit:</span> PDF එකේ ඕනෑම අකුරක් උඩ ක්ලික් කර කෙලින්ම වෙනස් කරන්න.</div>
+        <div>🖼️ <span class="font-bold">Image Drag & Drop:</span> ඕනෑම ෆොටෝ එකක් PDF එක උඩට Drag කරලා දාන්න.</div>
+    </div>
+
+    <!-- Workspace -->
+    <div class="flex-1 p-6 flex justify-center items-start overflow-auto">
+        <div id="editor-workspace" class="w-full max-w-4xl flex justify-center">
+            <div id="placeholder" class="text-center mt-20 p-8 border-4 border-dashed border-gray-300 rounded-2xl max-w-md bg-white shadow-sm">
+                <p class="text-gray-500 font-medium text-lg">කරුණාකර වැඩ අරඹන්න PDF එකක් තෝරන්න (Choose File).</p>
+            </div>
+            
+            <!-- Canvas Viewer Container -->
+            <div id="viewer-container" class="hidden">
+                <div class="pdf-page-wrapper" id="page-wrapper">
+                    <canvas id="pdf-canvas"></canvas>
+                    <div id="text-layer" class="text-layer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
-        let pdfDoc = null;
         let originalBytes = null;
-        let canvas = document.getElementById('pdf-canvas');
-        let ctx = canvas.getContext('2d');
-        let container = document.getElementById('canvas-container');
-        let eraseMode = false;
+        let pdfScale = 1.5;
+        let originalPageWidth = 0;
+        let originalPageHeight = 0;
+        let canvasWidth = 0;
+        let canvasHeight = 0;
 
-        // Load and Render PDF
-        document.getElementById('pdf-upload').addEventListener('change', async (e) => {
+        // Arrays to hold all user changes
+        let textEdits = []; 
+        let imageEdits = []; 
+
+        const pdfUpload = document.getElementById('pdf-upload');
+        const downloadBtn = document.getElementById('download-btn');
+        const placeholder = document.getElementById('placeholder');
+        const viewerContainer = document.getElementById('viewer-container');
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
+        const textLayerDiv = document.getElementById('text-layer');
+        const pageWrapper = document.getElementById('page-wrapper');
+
+        pdfUpload.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
-            const fileReader = new FileReader();
-            fileReader.onload = async function() {
+            const reader = new FileReader();
+            reader.onload = async function() {
                 originalBytes = new Uint8Array(this.result);
+                textEdits = [];
+                imageEdits = [];
+                // Clear out previous sessions elements
+                document.querySelectorAll('.dropped-image, .editable-input').forEach(el => el.remove());
                 
-                // Render Page 1 using PDF.js
-                const loadingTask = pdfjsLib.getDocument({data: originalBytes});
-                pdfDoc = await loadingTask.promise;
-                const page = await pdfDoc.getPage(1);
-                
-                const viewport = page.getViewport({scale: 1.5});
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-
-                const renderContext = {
-                    canvasContext: ctx,
-                    viewport: viewport
-                };
-                await page.render(renderContext).promise;
-                
-                document.getElementById('placeholder-text').classList.add('hidden');
-                container.classList.remove('hidden');
+                await renderPdfPage();
+                downloadBtn.disabled = false;
+                placeholder.classList.add('hidden');
+                viewerContainer.classList.remove('hidden');
             };
-            fileReader.readAsArrayBuffer(file);
+            reader.readAsArrayBuffer(file);
         });
 
-        // Add Draggable Text Over Images/Content
-        document.getElementById('add-text-btn').addEventListener('click', () => {
-            const textValue = document.getElementById('text-input').value;
-            if (!textValue) return alert('කරුණාකර අකුරු ටයිප් කරන්න!');
+        async function renderPdfPage() {
+            const loadingTask = pdfjsLib.getDocument({data: originalBytes});
+            const pdfDoc = await loadingTask.promise;
+            const page = await pdfDoc.getPage(1); // Modifying the first page
 
-            const textDiv = document.createElement('div');
-            textDiv.className = 'draggable text-black font-semibold absolute';
-            textDiv.innerText = textValue;
-            textDiv.style.left = '50px';
-            textDiv.style.top = '50px';
-            textDiv.style.fontSize = '18px';
+            const viewport = page.getViewport({ scale: pdfScale });
+            originalPageWidth = page.getViewport({ scale: 1.0 }).width;
+            originalPageHeight = page.getViewport({ scale: 1.0 }).height;
 
-            makeElementDraggable(textDiv);
-            container.appendChild(textDiv);
-            document.getElementById('text-input').value = '';
-        });
+            canvasWidth = viewport.width;
+            canvasHeight = viewport.height;
 
-        // Erase Mode (Draw white box over text/images to "erase" them)
-        document.getElementById('erase-mode-btn').addEventListener('click', () => {
-            eraseMode = !eraseMode;
-            if (eraseMode) {
-                document.getElementById('erase-mode-btn').className = "bg-yellow-600 text-white px-4 py-2 rounded text-sm font-medium";
-                document.getElementById('erase-mode-btn').innerText = "Eraser Active (Click canvas)";
-            } else {
-                document.getElementById('erase-mode-btn').className = "bg-red-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-red-600";
-                document.getElementById('erase-mode-btn').innerText = "අකුරු මකන්න (Whiteout)";
-            }
-        });
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            viewerContainer.style.width = canvasWidth + 'px';
+            viewerContainer.style.height = canvasHeight + 'px';
 
-        canvas.addEventListener('click', (e) => {
-            if (!eraseMode) return;
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            // 1. Render Background Canvas
+            const renderContext = { canvasContext: ctx, viewport: viewport };
+            await page.render(renderContext).promise;
 
-            // Create a white block acting as an eraser
-            const eraserBlock = document.createElement('div');
-            eraserBlock.className = 'draggable bg-white border-none absolute';
-            eraserBlock.style.width = '80px';
-            eraserBlock.style.height = '25px';
-            eraserBlock.style.backgroundColor = 'white';
-            eraserBlock.style.left = `${x - 40}px`;
-            eraserBlock.style.top = `${y - 12}px`;
+            // 2. Map Text Layers dynamically to detect clicks
+            textLayerDiv.innerHTML = '';
+            const textContent = await page.getTextContent();
+            
+            textContent.items.forEach((item) => {
+                const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+                
+                const span = document.createElement('span');
+                span.innerText = item.str;
+                span.style.left = `${tx[4]}px`;
+                span.style.top = `${tx[5] - (item.height * pdfScale)}px`; 
+                span.style.fontSize = `${item.height * pdfScale}px`;
+                span.style.fontFamily = 'sans-serif';
+                span.style.color = 'transparent'; 
+                span.className = 'absolute hover:bg-blue-200/40 transition rounded cursor-text';
+                
+                // Clicking an existing text chunk activates input overlay
+                span.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (span.style.visibility === 'hidden') return;
+                    createInputOverlay(span, item, tx[4], tx[5] - (item.height * pdfScale));
+                });
 
-            makeElementDraggable(eraserBlock);
-            container.appendChild(eraserBlock);
-        });
-
-        // Drag and Drop Logic
-        function makeElementDraggable(elmnt) {
-            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-            elmnt.onmousedown = dragMouseDown;
-
-            function dragMouseDown(e) {
-                e = e || window.event;
-                e.preventDefault();
-                pos3 = e.clientX;
-                pos4 = e.clientY;
-                document.onmouseup = closeDragElement;
-                document.onmousemove = elementDrag;
-            }
-
-            function elementDrag(e) {
-                e = e || window.event;
-                e.preventDefault();
-                pos1 = pos3 - e.clientX;
-                pos2 = pos4 - e.clientY;
-                pos3 = e.clientX;
-                pos4 = e.clientY;
-                elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
-                elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
-            }
-
-            function closeDragElement() {
-                document.onmouseup = null;
-                document.onmousemove = null;
-            }
+                textLayerDiv.appendChild(span);
+            });
         }
 
-        // Save & Download modified PDF using pdf-lib
-        document.getElementById('download-btn').addEventListener('click', async () => {
-            if (!originalBytes) return alert('මුලින්ම PDF එකක් දාන්න.');
+        // Creates an in-place editing input box
+        function createInputOverlay(span, item, leftPos, topPos) {
+            span.style.visibility = 'hidden';
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'editable-input';
+            input.value = item.str;
+            input.style.left = `${leftPos}px`;
+            input.style.top = `${topPos}px`;
+            input.style.fontSize = `${item.height * pdfScale}px`;
+            input.style.width = `${Math.max(span.offsetWidth + 20, 100)}px`;
+            input.style.height = `${item.height * pdfScale * 1.2}px`;
+            input.style.backgroundColor = 'white'; // Whiteout background hides background text
+
+            pageWrapper.appendChild(input);
+            input.focus();
+            input.select();
+
+            const saveEdits = () => {
+                if (input.value !== item.str) {
+                    textEdits.push({
+                        x: leftPos / pdfScale,
+                        y: originalPageHeight - (topPos / pdfScale) - item.height, // Map to PDF points system
+                        newText: input.value,
+                        fontSize: item.height,
+                        originalWidth: span.offsetWidth / pdfScale,
+                        originalHeight: item.height
+                    });
+                    
+                    // Simulate live editor view updates directly onto current browser preview canvas
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(leftPos, topPos, span.offsetWidth + 10, item.height * pdfScale * 1.1);
+                    
+                    ctx.fillStyle = '#000000';
+                    ctx.font = `${item.height * pdfScale}px sans-serif`;
+                    ctx.fillText(input.value, leftPos, topPos + (item.height * pdfScale * 0.85));
+                } else {
+                    span.style.visibility = 'visible';
+                }
+                input.remove();
+            };
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') saveEdits();
+            });
+            input.addEventListener('blur', saveEdits);
+        }
+
+        // --- Handle Dragging and Dropping Images ---
+        viewerContainer.addEventListener('dragover', (e) => e.preventDefault());
+
+        viewerContainer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type.startsWith('image/')) {
+                const file = files[0];
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const rect = viewerContainer.getBoundingClientRect();
+                    const dropX = e.clientX - rect.left;
+                    const dropY = e.clientY - rect.top;
+
+                    createImageOverlay(event.target.result, dropX, dropY);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function createImageOverlay(base64Src, x, y) {
+            const imgId = 'img_' + Date.now();
+            const wrapper = document.createElement('div');
+            wrapper.className = 'dropped-image';
+            wrapper.id = imgId;
+            wrapper.style.left = `${x - 60}px`;
+            wrapper.style.top = `${y - 60}px`;
+            wrapper.style.width = '120px';
+            wrapper.style.height = '120px';
+
+            const img = document.createElement('img');
+            img.src = base64Src;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'cover';
+            wrapper.appendChild(img);
+
+            const deleteBtn = document.createElement('div');
+            deleteBtn.className = 'image-delete-btn';
+            deleteBtn.innerText = '×';
+            deleteBtn.onclick = () => {
+                wrapper.remove();
+                imageEdits = imageEdits.filter(i => i.id !== imgId);
+            };
+            wrapper.appendChild(deleteBtn);
+
+            pageWrapper.appendChild(wrapper);
+
+            const currentEdit = {
+                id: imgId,
+                x: (x - 60) / pdfScale,
+                y: originalPageHeight - ((y + 60) / pdfScale),
+                w: 120 / pdfScale,
+                h: 120 / pdfScale,
+                src: base64Src
+            };
+            imageEdits.push(currentEdit);
+
+            // Drag movement listener
+            wrapper.onmousedown = function(e) {
+                if (e.target === deleteBtn) return;
+                let startX = e.clientX;
+                let startY = e.clientY;
+                
+                function moveAt(e) {
+                    let dx = e.clientX - startX;
+                    let dy = e.clientY - startY;
+                    let newLeft = wrapper.offsetLeft + dx;
+                    let newTop = wrapper.offsetTop + dy;
+                    
+                    wrapper.style.left = newLeft + 'px';
+                    wrapper.style.top = newTop + 'px';
+                    
+                    startX = e.clientX;
+                    startY = e.clientY;
+
+                    currentEdit.x = newLeft / pdfScale;
+                    currentEdit.y = originalPageHeight - ((newTop + wrapper.offsetHeight) / pdfScale);
+                }
+
+                document.addEventListener('mousemove', moveAt);
+                document.onmouseup = function() {
+                    document.removeEventListener('mousemove', moveAt);
+                    document.onmouseup = null;
+                };
+            };
+        }
+
+        // --- Export Final Modified PDF ---
+        downloadBtn.addEventListener('click', async () => {
+            if (!originalBytes) return;
 
             const { PDFDocument, rgb } = PDFLib;
             const pdfDocInstance = await PDFDocument.load(originalBytes);
             const pages = pdfDocInstance.getPages();
             const firstPage = pages[0];
-            const { height } = firstPage.getSize();
 
-            const scaleX = firstPage.getWidth() / canvas.width;
-            const scaleY = firstPage.getHeight() / canvas.height;
-
-            const modifications = container.querySelectorAll('.draggable');
-            modifications.forEach(mod => {
-                const x = parseFloat(mod.style.left) * scaleX;
-                const y = height - (parseFloat(mod.style.top) * scaleY) - (parseFloat(mod.style.height || 20) * scaleY);
-
-                if (mod.innerText) {
-                    // Draw Text
-                    firstPage.drawText(mod.innerText, {
-                        x: x,
-                        y: y,
-                        size: 16 * scaleY,
-                        color: rgb(0, 0, 0),
-                    });
-                } else {
-                    // Draw White Box (Eraser)
-                    const w = parseFloat(mod.style.width) * scaleX;
-                    const h = parseFloat(mod.style.height) * scaleY;
-                    firstPage.drawRectangle({
-                        x: x,
-                        y: y,
-                        width: w,
-                        height: h,
-                        color: rgb(1, 1, 1),
-                    });
-                }
+            // 1. Apply Whiteout Over Old Text and Insert New Text Changes
+            textEdits.forEach(edit => {
+                firstPage.drawRectangle({
+                    x: edit.x,
+                    y: edit.y,
+                    width: edit.originalWidth * 1.5,
+                    height: edit.originalHeight * 1.2,
+                    color: rgb(1, 1, 1),
+                });
+                
+                firstPage.drawText(edit.newText, {
+                    x: edit.x,
+                    y: edit.y + (edit.fontSize * 0.1),
+                    size: edit.fontSize,
+                    color: rgb(0, 0, 0),
+                });
             });
 
-            const pdfBytes = await pdfDocInstance.save();
-            const blob = new Blob([pdfBytes], { type: "application/pdf" });
+            // 2. Embed Dropped Images onto the exact location
+            for (const imgEdit of imageEdits) {
+                const imgDataBytes = await fetch(imgEdit.src).then(res => res.arrayBuffer());
+                let embeddedImg;
+                if (imgEdit.src.includes('image/png')) {
+                    embeddedImg = await pdfDocInstance.embedPng(imgDataBytes);
+                } else {
+                    embeddedImg = await pdfDocInstance.embedJpg(imgDataBytes);
+                }
+
+                firstPage.drawImage(embeddedImg, {
+                    x: imgEdit.x,
+                    y: imgEdit.y,
+                    width: imgEdit.w,
+                    height: imgEdit.h
+                });
+            }
+
+            const finalPdfBytes = await pdfDocInstance.save();
+            const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = "edited_project.pdf";
+            link.download = "edited_by_sejda_style.pdf";
             link.click();
         });
     </script>
