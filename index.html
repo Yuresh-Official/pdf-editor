@@ -20,7 +20,7 @@
             padding: 10px;
             background: #e2e8f0;
             border-radius: 8px;
-            max-height: calc(100vh - 180px);
+            max-height: calc(100vh - 160px);
         }
 
         #viewer-container {
@@ -79,7 +79,7 @@
         
         .pdf-image-eraser {
             border: 2px dashed #ef4444;
-            background: rgba(239, 68, 68, 0.1);
+            background: rgba(255, 255, 255, 0.9); /* සාදන විටම සුදු පැහැයෙන් දිස්වේ */
         }
 
         .image-delete-btn {
@@ -102,10 +102,14 @@
         <div class="flex items-center gap-4 flex-wrap">
             <input type="file" id="pdf-upload" accept=".pdf" class="text-sm text-gray-300 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"/>
             
-            <!-- Hidden Image Input and Custom Button -->
             <input type="file" id="image-upload" accept="image/*" class="hidden" />
             <button id="add-image-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition shadow-md disabled:opacity-50" disabled>
                 📷 Add Image
+            </button>
+
+            <!-- Erase Mode Toggle Button -->
+            <button id="erase-toggle-btn" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition shadow-md disabled:opacity-50" disabled>
+                🧼 Erase Mode: OFF
             </button>
             
             <button id="download-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-md text-sm font-semibold transition shadow-md disabled:opacity-50" disabled>
@@ -116,7 +120,7 @@
 
     <!-- Instruction Subbar -->
     <div class="bg-amber-50 border-b border-amber-200 p-2 text-center text-xs text-amber-900 font-medium">
-        🔥 <b>අලුත් විශේෂාංග:</b> 1. වෙනස් කළ Text නැවත ක්ලික් කර වෙනස් කළ හැක. 2. PDF එකේ ඇති පින්තූරයක් මැකීමට ඒ මත ක්ලික් කරන්න. 3. <b>📷 Add Image</b> බටන් එකෙන් ෆෝන් එකෙන් වුවද පින්තූර එක් කළ හැක!
+        💡 <b>වැදගත්:</b> පින්තූර හෝ ලෝගෝ මකන්න අවශ්‍ය නම් <b>🧼 Erase Mode: ON</b> කර PDF එක මත ක්ලික් කරන්න. සාදන ලද සුදු කොටු එවලේම ❌ බටන් එකෙන් අයින් කළ හැක!
     </div>
 
     <!-- Workspace Area -->
@@ -145,13 +149,15 @@
         let originalPageWidth = 0;
         let originalPageHeight = 0;
 
-        let textEdits = {}; // ID එකකින් Text Edits ට්‍රැක් කරනවා (නැවත වෙනස් කරන්න පුළුවන් වෙන්න)
+        let textEdits = {}; 
         let imageEdits = []; 
-        let imageErasers = []; // PDF එකේ මුල් පින්තූර මකන ලැයිස්තුව
+        let imageErasers = {}; // ID මඟින් Eraser Blocks ට්‍රැක් කිරීමට Object එකක් ලෙස වෙනස් කරන ලදී
+        let isEraseModeActive = false; // Erase mode තත්ත්වය ට්‍රැක් කිරීමට
 
         const pdfUpload = document.getElementById('pdf-upload');
         const imageUpload = document.getElementById('image-upload');
         const addImageBtn = document.getElementById('add-image-btn');
+        const eraseToggleBtn = document.getElementById('erase-toggle-btn');
         const downloadBtn = document.getElementById('download-btn');
         const placeholder = document.getElementById('placeholder');
         const scrollBox = document.getElementById('scroll-box');
@@ -170,16 +176,33 @@
                 originalBytes = new Uint8Array(this.result);
                 textEdits = {};
                 imageEdits = [];
-                imageErasers = [];
+                imageErasers = {};
+                isEraseModeActive = false;
+                eraseToggleBtn.innerText = "🧼 Erase Mode: OFF";
+                eraseToggleBtn.className = "bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition shadow-md";
+                
                 document.querySelectorAll('.dropped-image, .editable-input, .pdf-image-eraser').forEach(el => el.remove());
                 
                 await renderPdfPage();
                 downloadBtn.disabled = false;
                 addImageBtn.disabled = false;
+                eraseToggleBtn.disabled = false;
                 placeholder.classList.add('hidden');
                 scrollBox.classList.remove('hidden');
             };
             reader.readAsArrayBuffer(file);
+        });
+
+        // Erase Mode එක ON/OFF කරන බටන් එකේ ක්‍රියාකාරීත්වය
+        eraseToggleBtn.addEventListener('click', () => {
+            isEraseModeActive = !isEraseModeActive;
+            if (isEraseModeActive) {
+                eraseToggleBtn.innerText = "🧼 Erase Mode: ON";
+                eraseToggleBtn.className = "bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition shadow-md animate-pulse";
+            } else {
+                eraseToggleBtn.innerText = "🧼 Erase Mode: OFF";
+                eraseToggleBtn.className = "bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition shadow-md";
+            }
         });
 
         async function renderPdfPage() {
@@ -201,19 +224,7 @@
 
             textLayerDiv.innerHTML = '';
             
-            // --- PDF එකේ ඇති පින්තූර උඩ ක්ලික් කර මැකීමේ විශේෂාංගය ---
-            page.getOperatorList().then((opList) => {
-                const validImages = [];
-                for (let i = 0; i < opList.fnArray.length; i++) {
-                    if (opList.fnArray[i] === pdfjsLib.OPS.paintXObject || opList.fnArray[i] === pdfjsLib.OPS.paintJpegXObject) {
-                        const args = opList.argsArray[i];
-                        // මෙයින් පින්තූරයේ පිහිටීම (Transform Matrix) ලබා ගනී
-                        validImages.push(args[0]);
-                    }
-                }
-            });
-
-            // Canvas එක මත ඇති පින්තූර ක්ලික් කර මැකීමට Listener එකක්
+            // ක්ලික් එකකින් සුදු කොටු (Eraser) සෑදීමේ ලිස්නර් එක
             viewerContainer.addEventListener('click', handleCanvasImageClick);
 
             const textContent = await page.getTextContent();
@@ -239,6 +250,9 @@
                 const isFontBold = item.fontName.toLowerCase().includes('bold') || item.fontName.toLowerCase().includes('goth') || item.fontName.toLowerCase().includes('black');
 
                 span.addEventListener('click', (e) => {
+                    // Erase mode එක ON වෙලා තියෙන වෙලාවට Text edit කරන්න දෙන්න එපා
+                    if (isEraseModeActive) return;
+
                     e.stopPropagation();
                     
                     const bgPixel = ctx.getImageData(tx[4] + 1, computedTop + 1, 1, 1).data;
@@ -269,7 +283,6 @@
 
                     const textRGB = `rgb(${textR}, ${textG}, ${textB})`;
 
-                    // දැනටමත් මේ span එක වෙනස් කරලා තියෙනවා නම් ඒ අගය ගන්න
                     const currentActiveText = textEdits[span.id] ? textEdits[span.id].rawInput : (isFontBold ? `*${item.str}*` : item.str);
 
                     createInputOverlay(span, item, tx[4], computedTop, bgRGB, bgPixel, textRGB, textR, textG, textB, isFontBold, currentActiveText);
@@ -303,7 +316,7 @@
             const saveEdits = () => {
                 let userValue = input.value;
                 let finalBoldState = isFontBold;
-                let rawInput = input.value; // නැවත සංස්කරණය සඳහා මුල් අගය තබා ගැනීම
+                let rawInput = input.value;
 
                 if (userValue.startsWith('*') && userValue.endsWith('*') && userValue.length > 1) {
                     finalBoldState = true;
@@ -312,7 +325,6 @@
                     finalBoldState = false;
                 }
 
-                // හැමවෙලාවෙම අලුත් Edit එක සේව් කරගන්න (නැවත නැවත වෙනස් කිරීමට හැකිවීමට)
                 textEdits[span.id] = {
                     x: leftPos / pdfScale,
                     y: originalPageHeight - (topPos / pdfScale) - item.height, 
@@ -326,7 +338,6 @@
                     textColor: { r: textR/255, g: textG/255, b: textB/255 }
                 };
                 
-                // Canvas එක මත පැරණි කොටස වසා අලුත් අකුරු ලිවීම
                 ctx.fillStyle = bgRGB;
                 ctx.fillRect(leftPos - 2, topPos, (item.width * pdfScale) + 45, item.height * pdfScale * 1.15);
                 
@@ -343,53 +354,57 @@
             input.addEventListener('blur', saveEdits);
         }
 
-        // --- PDF එකේ දැනට තියෙන පින්තූරයක් උඩ ක්ලික් කර මකා දැමීම ---
+        // --- Erase Mode එක ON නම් පමණක් සුදු කොටු සෑදීමේ විශේෂාංගය ---
         function handleCanvasImageClick(e) {
-            // Text layer එකක් උඩ නෙමෙයි නම් ක්ලික් කලේ සහ placeholder එකක් උඩ නෙමෙයි නම්
-            if (e.target.tagName === 'SPAN' || e.target.classList.contains('editable-input') || e.target.closest('.dropped-image')) return;
+            // Erase Mode එක ON නැත්නම් කිසිවක් කරන්න එපා
+            if (!isEraseModeActive) return;
+            if (e.target.tagName === 'SPAN' || e.target.classList.contains('editable-input') || e.target.closest('.dropped-image') || e.target.classList.contains('image-delete-btn')) return;
 
             const rect = viewerContainer.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
 
-            // පින්තූරයක් මැකීමට Whiteout block එකක් සාදන්න
             const eraserId = 'erase_' + Date.now();
             const eraser = document.createElement('div');
             eraser.className = 'pdf-image-eraser';
-            eraser.style.left = `${clickX - 50}px`;
-            eraser.style.top = `${clickY - 50}px`;
-            eraser.style.width = '100px';
-            eraser.style.height = '100px';
+            eraser.id = eraserId;
+            eraser.style.left = `${clickX - 40}px`;
+            eraser.style.top = `${clickY - 40}px`;
+            eraser.style.width = '80px';
+            eraser.style.height = '80px';
 
             const deleteBtn = document.createElement('div');
             deleteBtn.className = 'image-delete-btn';
             deleteBtn.innerText = '❌';
+            
+            // සුදු කොටුව සම්පූර්ණයෙන්ම මකා දැමීමේ බලය (Remove Eraser block completely)
             deleteBtn.onclick = (ev) => {
                 ev.stopPropagation();
+                eraser.remove(); // Screen එකෙන් අයින් කරනවා
+                delete imageErasers[eraserId]; // සේව් කරපු ලිස්ට් එකෙන් අයින් කරනවා
                 
-                // Canvas එක මත සුදු පැහැති කොටසක් ඇඳ රූපය වසන්න
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(clickX - 50, clickY - 50, 100, 100);
-                
-                imageErasers.push({
-                    x: (clickX - 50) / pdfScale,
-                    y: originalPageHeight - ((clickY + 50) / pdfScale),
-                    w: 100 / pdfScale,
-                    h: 100 / pdfScale
-                });
-                eraser.remove();
+                // Canvas එක නැවත මුල් තත්වයට පත් කිරීමට (Re-render)
+                renderPdfPage();
             };
             
             eraser.appendChild(deleteBtn);
             pageWrapper.appendChild(eraser);
 
-            // Eraser එකත් Drag කරලා විශාලත්වය වෙනස් කරගන්න පුළුවන්
-            setupDragSupport(eraser, {w: 100, h:100}, (nl, nt) => {
-                // ඉවත් කරන තැන යාවත්කාලීන කිරීම සඳහා
+            // සේව් කර ගන්නවා PDF එක බාගන්නා විට සුදු කරන්න
+            imageErasers[eraserId] = {
+                x: (clickX - 40) / pdfScale,
+                y: originalPageHeight - ((clickY + 40) / pdfScale),
+                w: 80 / pdfScale,
+                h: 80 / pdfScale
+            };
+
+            setupDragSupport(eraser, (nl, nt) => {
+                imageErasers[eraserId].x = nl / pdfScale;
+                imageErasers[eraserId].y = originalPageHeight - ((nt + eraser.offsetHeight) / pdfScale);
             });
         }
 
-        // --- පින්තූර Button එකෙන් හෝ Drag & Drop මඟින් ඇතුළත් කිරීම ---
+        // --- පින්තූර එකතු කිරීමේ විශේෂාංග ---
         addImageBtn.addEventListener('click', () => imageUpload.click());
         imageUpload.addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -449,13 +464,13 @@
             };
             imageEdits.push(currentEdit);
 
-            setupDragSupport(wrapper, {w: 100, h: 100}, (nl, nt) => {
+            setupDragSupport(wrapper, (nl, nt) => {
                 currentEdit.x = nl / pdfScale;
                 currentEdit.y = originalPageHeight - ((nt + wrapper.offsetHeight) / pdfScale);
             });
         }
 
-        function setupDragSupport(element, initialSize, onDragCallback) {
+        function setupDragSupport(element, onDragCallback) {
             const dragStart = (e) => {
                 if (e.target.classList.contains('image-delete-btn')) return;
                 let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
@@ -513,18 +528,18 @@
                 const helveticaFont = await pdfDocInstance.embedFont(StandardFonts.Helvetica);
                 const helveticaBoldFont = await pdfDocInstance.embedFont(StandardFonts.HelveticaBold);
 
-                // 1. මුල් පින්තූර සුදු කර මැකීම (Apply Image Erasers)
-                imageErasers.forEach(eraser => {
+                // 1. ඇත්තටම ඉතිරි කරපු සුදු කොටු විතරක් PDF එකෙන් මකා දැමීම
+                Object.values(imageErasers).forEach(eraser => {
                     firstPage.drawRectangle({
                         x: eraser.x,
                         y: eraser.y,
                         width: eraser.w,
                         height: eraser.h,
-                        color: rgb(1, 1, 1), // White solid box
+                        color: rgb(1, 1, 1), 
                     });
                 });
 
-                // 2. අකුරු වෙනස් කිරීම් ඇතුළත් කිරීම (Apply Text Edits)
+                // 2. Text Edits ඇතුළත් කිරීම
                 Object.values(textEdits).forEach(edit => {
                     const cleanText = edit.newText.replace(/[^\x20-\x7E]/g, '');
 
@@ -547,7 +562,7 @@
                     }
                 });
 
-                // 3. අලුත් පින්තූර ඇතුළත් කිරීම (Apply New Images)
+                // 3. අලුත් පින්තූර ඇතුළත් කිරීම
                 for (const imgEdit of imageEdits) {
                     const imgDataBytes = base64ToArrayBuffer(imgEdit.src);
                     const embeddedImg = imgEdit.src.includes('image/png') ? 
