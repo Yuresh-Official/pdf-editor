@@ -104,7 +104,7 @@
 
     <!-- Instruction Subbar -->
     <div class="bg-amber-50 border-b border-amber-200 p-2 text-center text-xs text-amber-900 font-medium">
-        👉 <b>💡 ෆෝන් එකෙන් කරන විට:</b> PDF එක සම්පූර්ණයෙන්ම බැලීමට දෙපැත්තට හෝ පල්ලෙහාට Scroll කරන්න. ඕනෑම අකුරක් උඩ ක්ලික් කර වෙනස් කරන්න!
+        👉 <b>💡 විශේෂ විශේෂාංග:</b> වෙනස් කරන අකුරු Bold කිරීමට දෙපැත්තට තරුව යොදන්න (උදා: *TEXT*). මුල් PDF එකේ Bold තිබූ අකුරු ස්වයංක්‍රීයව හඳුනාගනී!
     </div>
 
     <!-- Workspace Area -->
@@ -201,15 +201,16 @@
                 span.style.width = `${item.width * pdfScale}px`;
                 span.style.height = `${item.height * pdfScale}px`;
                 
+                // PDF Metadata එකෙන් Font එක Bold ද කියා බැලීම
+                const isFontBold = item.fontName.toLowerCase().includes('bold') || item.fontName.toLowerCase().includes('goth') || item.fontName.toLowerCase().includes('black');
+
                 span.addEventListener('click', (e) => {
                     e.stopPropagation();
                     if (span.style.visibility === 'hidden') return;
                     
-                    // 1. Get Background Color (from corner)
                     const bgPixel = ctx.getImageData(tx[4] + 1, computedTop + 1, 1, 1).data;
                     const bgRGB = `rgb(${bgPixel[0]}, ${bgPixel[1]}, ${bgPixel[2]})`;
 
-                    // 2. Smart Text Color Detection (Scans the center area to find the font color)
                     let textR = 0, textG = 0, textB = 0;
                     let maxDist = -1;
                     const startX = Math.floor(tx[4] + (item.width * pdfScale) * 0.2);
@@ -228,7 +229,6 @@
                         }
                     }
 
-                    // Fallback if it's too close to background
                     if (maxDist < 40) {
                         const brightness = (bgPixel[0] * 299 + bgPixel[1] * 587 + bgPixel[2] * 114) / 1000;
                         textR = textG = textB = brightness > 128 ? 0 : 255;
@@ -236,53 +236,69 @@
 
                     const textRGB = `rgb(${textR}, ${textG}, ${textB})`;
 
-                    createInputOverlay(span, item, tx[4], computedTop, bgRGB, bgPixel, textRGB, textR, textG, textB);
+                    createInputOverlay(span, item, tx[4], computedTop, bgRGB, bgPixel, textRGB, textR, textG, textB, isFontBold);
                 });
 
                 textLayerDiv.appendChild(span);
             });
         }
 
-        function createInputOverlay(span, item, leftPos, topPos, bgRGB, bgPixel, textRGB, textR, textG, textB) {
+        function createInputOverlay(span, item, leftPos, topPos, bgRGB, bgPixel, textRGB, textR, textG, textB, isFontBold) {
             span.style.visibility = 'hidden';
 
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'editable-input';
-            input.value = item.str;
+            
+            // මුල් text එක bold නම් පෙන්නද්දීම තරුව සහිතව පෙන්වන්න (උදා: *NALIN*)
+            input.value = isFontBold ? `*${item.str}*` : item.str;
+            
             input.style.left = `${leftPos}px`;
             input.style.top = `${topPos}px`;
             input.style.fontSize = `${item.height * pdfScale}px`;
-            input.style.width = `${(item.width * pdfScale) + 15}px`;
+            input.style.width = `${(item.width * pdfScale) + 30}px`;
             input.style.height = `${item.height * pdfScale * 1.1}px`;
             input.style.backgroundColor = bgRGB;
-            input.style.color = textRGB; // Input text matches original PDF text color
+            input.style.color = textRGB;
+            if (isFontBold) input.style.fontWeight = 'bold';
 
             pageWrapper.appendChild(input);
             input.focus();
             input.select();
 
             const saveEdits = () => {
-                if (input.value !== item.str) {
+                let userValue = input.value;
+                let finalBoldState = isFontBold;
+
+                // WhatsApp Style Bold Trigger Check (*text*)
+                if (userValue.startsWith('*') && userValue.endsWith('*') && userValue.length > 1) {
+                    finalBoldState = true;
+                    userValue = userValue.substring(1, userValue.length - 1); // තරුව ඉවත් කරන්න
+                } else if (!isFontBold) {
+                    finalBoldState = false;
+                }
+
+                if (userValue !== item.str || finalBoldState !== isFontBold) {
                     textEdits.push({
                         x: leftPos / pdfScale,
                         y: originalPageHeight - (topPos / pdfScale) - item.height, 
-                        newText: input.value,
+                        newText: userValue,
                         fontSize: item.height,
                         originalWidth: (item.width * pdfScale) / pdfScale,
                         originalHeight: item.height,
+                        isBold: finalBoldState,
                         bgColor: { r: bgPixel[0]/255, g: bgPixel[1]/255, b: bgPixel[2]/255 },
                         textColor: { r: textR/255, g: textG/255, b: textB/255 }
                     });
                     
-                    // Clear old text with background color
+                    // Canvas එක මත පැරණි කොටස මකා දැමීම
                     ctx.fillStyle = bgRGB;
-                    ctx.fillRect(leftPos, topPos, (item.width * pdfScale) + 15, item.height * pdfScale * 1.1);
+                    ctx.fillRect(leftPos, topPos, (item.width * pdfScale) + 30, item.height * pdfScale * 1.1);
                     
-                    // Redraw new text with detected original color
+                    // Canvas එක මත අලුත් text එක ඇඳීම
                     ctx.fillStyle = textRGB;
-                    ctx.font = `${item.height * pdfScale}px sans-serif`;
-                    ctx.fillText(input.value, leftPos, topPos + (item.height * pdfScale * 0.85));
+                    ctx.font = `${finalBoldState ? 'bold ' : ''}${item.height * pdfScale}px sans-serif`;
+                    ctx.fillText(userValue, leftPos, topPos + (item.height * pdfScale * 0.85));
                 } else {
                     span.style.visibility = 'visible';
                 }
@@ -400,27 +416,29 @@
                 const pdfDocInstance = await PDFDocument.load(originalBytes);
                 const firstPage = pdfDocInstance.getPages()[0];
                 
+                // Fonts දෙකම ලෝඩ් කරගැනීම (Regular සහ Bold)
                 const helveticaFont = await pdfDocInstance.embedFont(StandardFonts.Helvetica);
+                const helveticaBoldFont = await pdfDocInstance.embedFont(StandardFonts.HelveticaBold);
 
                 textEdits.forEach(edit => {
                     const cleanText = edit.newText.replace(/[^\x20-\x7E]/g, '');
 
-                    // Draw background block
+                    // පසුබිම වර්ණයෙන් වැසීම
                     firstPage.drawRectangle({
                         x: edit.x,
                         y: edit.y - 2,
-                        width: edit.originalWidth * 1.3,
+                        width: edit.originalWidth * 1.4,
                         height: edit.originalHeight * 1.3,
                         color: rgb(edit.bgColor.r, edit.bgColor.g, edit.bgColor.b),
                     });
                     
-                    // Draw text in matching original color
+                    // නිවැරදි Font එක සහ නිවැරදි වර්ණයෙන් PDF එක මත ලිවීම
                     if(cleanText.length > 0) {
                         firstPage.drawText(cleanText, {
                             x: edit.x,
                             y: edit.y + (edit.fontSize * 0.1),
                             size: edit.fontSize,
-                            font: helveticaFont,
+                            font: edit.isBold ? helveticaBoldFont : helveticaFont,
                             color: rgb(edit.textColor.r, edit.textColor.g, edit.textColor.b),
                         });
                     }
