@@ -3,21 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sejda-Style PDF Editor</title>
-    <!-- Tailwind CSS for styling -->
+    <title>Advanced Pro PDF Editor</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- PDF.js for rendering and text layer detection -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-    <!-- PDF-Lib for generating and saving the modified PDF -->
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <style>
-        body { background-color: #f3f4f6; }
+        body { background-color: #f1f5f9; user-select: none; }
         #viewer-container {
             position: relative;
             margin: 0 auto;
             background: white;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
         .pdf-page-wrapper {
             position: relative;
@@ -28,74 +24,76 @@
             position: absolute;
             left: 0; top: 0; right: 0; bottom: 0;
             overflow: hidden;
-            opacity: 1;
-            line-height: 1.0;
+            z-index: 20;
         }
+        /* මුළු PDF එකේම අකුරු නිවැරදිව ක්ලික් කරන්න පුළුවන් වෙන්න හදපු transparent blocks */
         .text-layer span {
             color: transparent;
             position: absolute;
             white-space: pre;
             cursor: text;
             transform-origin: 0% 0%;
+            border: 1px solid transparent;
         }
+        .text-layer span:hover {
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px dashed #3b82f6;
+        }
+        /* එඩිට් කරන වෙලාවට එන Input box එක */
         .editable-input {
             position: absolute;
-            border: 2px solid #3b82f6;
-            background: rgba(255, 255, 255, 0.95);
-            color: #000;
-            font-family: sans-serif;
-            font-weight: bold;
+            border: 2px solid #2563eb;
             outline: none;
             z-index: 50;
-            padding: 0px 2px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            padding: 0;
+            margin: 0;
+            font-family: sans-serif;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
         .dropped-image {
             position: absolute;
             cursor: move;
             border: 2px dashed #10b981;
-            user-select: none;
-            z-index: 40;
+            z-index: 30;
         }
         .image-delete-btn {
             position: absolute;
             top: -10px; right: -10px;
             background: #ef4444; color: white;
-            border-radius: 50%; width: 20px; height: 20px;
+            border-radius: 50%; width: 22px; height: 22px;
             font-size: 12px; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; z-index: 41; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            cursor: pointer; z-index: 31; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
     <!-- Top Navbar -->
-    <div class="bg-slate-800 text-white p-4 shadow-md flex flex-wrap items-center justify-between gap-4">
+    <div class="bg-slate-900 text-white p-4 shadow-lg flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-3">
-            <span class="text-xl font-bold tracking-wide text-blue-400">Sejda-Style PDF Editor</span>
+            <span class="text-xl font-bold tracking-wide text-blue-400">Pro PDF Editor (Color Match)</span>
         </div>
         <div class="flex items-center gap-4 flex-wrap">
             <input type="file" id="pdf-upload" accept=".pdf" class="text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"/>
             <button id="download-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-md text-sm font-semibold transition shadow-md disabled:opacity-50" disabled>
-                Download Modified PDF
+                Download PDF
             </button>
         </div>
     </div>
 
-    <!-- Instruction Bar -->
-    <div class="bg-blue-50 border-b border-blue-200 p-3 text-center text-sm text-blue-800 font-medium flex justify-center gap-6">
-        <div>📝 <span class="font-bold">Text Edit:</span> PDF එකේ ඕනෑම අකුරක් උඩ ක්ලික් කර කෙලින්ම වෙනස් කරන්න.</div>
-        <div>🖼️ <span class="font-bold">Image Drag & Drop:</span> ඕනෑම ෆොටෝ එකක් PDF එක උඩට Drag කරලා දාන්න.</div>
+    <!-- Instruction Subbar -->
+    <div class="bg-amber-50 border-b border-amber-200 p-2.5 text-center text-xs sm:text-sm text-amber-900 font-medium">
+        🎯 <b>වැදගත්:</b> PDF එකේ ඕනෑම අකුරක් උඩ ක්ලික් කරන්න. එම ස්ථානයේ පසුබිම් පාට (Background Color) එක සයිට් එක මඟින්ම auto හඳුනාගෙන අකුරු වෙනස් කරයි!
     </div>
 
     <!-- Workspace -->
-    <div class="flex-1 p-6 flex justify-center items-start overflow-auto">
+    <div class="flex-1 p-4 sm:p-6 flex justify-center items-start overflow-auto">
         <div id="editor-workspace" class="w-full max-w-4xl flex justify-center">
             <div id="placeholder" class="text-center mt-20 p-8 border-4 border-dashed border-gray-300 rounded-2xl max-w-md bg-white shadow-sm">
-                <p class="text-gray-500 font-medium text-lg">කරුණාකර වැඩ අරඹන්න PDF එකක් තෝරන්න (Choose File).</p>
+                <p class="text-gray-500 font-medium text-lg">කරුණාකර වැඩ අරඹන්න PDF එකක් තෝරන්න...</p>
             </div>
             
-            <!-- Canvas Viewer Container -->
             <div id="viewer-container" class="hidden">
                 <div class="pdf-page-wrapper" id="page-wrapper">
                     <canvas id="pdf-canvas"></canvas>
@@ -109,13 +107,10 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
         let originalBytes = null;
-        let pdfScale = 1.5;
+        let pdfScale = 1.5; // High resolution rendering
         let originalPageWidth = 0;
         let originalPageHeight = 0;
-        let canvasWidth = 0;
-        let canvasHeight = 0;
 
-        // Arrays to hold all user changes
         let textEdits = []; 
         let imageEdits = []; 
 
@@ -137,7 +132,6 @@
                 originalBytes = new Uint8Array(this.result);
                 textEdits = [];
                 imageEdits = [];
-                // Clear out previous sessions elements
                 document.querySelectorAll('.dropped-image, .editable-input').forEach(el => el.remove());
                 
                 await renderPdfPage();
@@ -151,53 +145,61 @@
         async function renderPdfPage() {
             const loadingTask = pdfjsLib.getDocument({data: originalBytes});
             const pdfDoc = await loadingTask.promise;
-            const page = await pdfDoc.getPage(1); // Modifying the first page
+            const page = await pdfDoc.getPage(1); 
 
             const viewport = page.getViewport({ scale: pdfScale });
             originalPageWidth = page.getViewport({ scale: 1.0 }).width;
             originalPageHeight = page.getViewport({ scale: 1.0 }).height;
 
-            canvasWidth = viewport.width;
-            canvasHeight = viewport.height;
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            viewerContainer.style.width = viewport.width + 'px';
+            viewerContainer.style.height = viewport.height + 'px';
 
-            canvas.width = canvasWidth;
-            canvas.height = canvasHeight;
-            viewerContainer.style.width = canvasWidth + 'px';
-            viewerContainer.style.height = canvasHeight + 'px';
-
-            // 1. Render Background Canvas
             const renderContext = { canvasContext: ctx, viewport: viewport };
             await page.render(renderContext).promise;
 
-            // 2. Map Text Layers dynamically to detect clicks
+            // මුළු PDF එකේම අකුරු නිවැරදිව අල්ලගන්න හදපු කොටස
             textLayerDiv.innerHTML = '';
             const textContent = await page.getTextContent();
             
             textContent.items.forEach((item) => {
+                if (!item.str.trim()) return; // හිස් තැන් මඟහරින්න
+
                 const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
-                
                 const span = document.createElement('span');
                 span.innerText = item.str;
+                
+                // නිවැරදිව Text පිහිටීම සකස් කිරීම
                 span.style.left = `${tx[4]}px`;
                 span.style.top = `${tx[5] - (item.height * pdfScale)}px`; 
                 span.style.fontSize = `${item.height * pdfScale}px`;
                 span.style.fontFamily = 'sans-serif';
-                span.style.color = 'transparent'; 
-                span.className = 'absolute hover:bg-blue-200/40 transition rounded cursor-text';
+                span.style.width = `${item.width * pdfScale}px`;
+                span.style.height = `${item.height * pdfScale}px`;
                 
-                // Clicking an existing text chunk activates input overlay
                 span.addEventListener('click', (e) => {
                     e.stopPropagation();
                     if (span.style.visibility === 'hidden') return;
-                    createInputOverlay(span, item, tx[4], tx[5] - (item.height * pdfScale));
+                    
+                    const leftPos = tx[4];
+                    const topPos = tx[5] - (item.height * pdfScale);
+                    
+                    // 🎨 AUTO COLOR DETECTION: ක්ලික් කරපු තැන තියෙන පසුබිම් පාට (RGB) එක Canvas එකෙන් කියවා ගැනීම
+                    const pixelData = ctx.getImageData(leftPos + 2, topPos + 2, 1, 1).data;
+                    const r = pixelData[0];
+                    const g = pixelData[1];
+                    const b = pixelData[2];
+                    const bgRGB = `rgb(${r}, ${g}, ${b})`;
+
+                    createInputOverlay(span, item, leftPos, topPos, bgRGB, r, g, b);
                 });
 
                 textLayerDiv.appendChild(span);
             });
         }
 
-        // Creates an in-place editing input box
-        function createInputOverlay(span, item, leftPos, topPos) {
+        function createInputOverlay(span, item, leftPos, topPos, bgRGB, r, g, b) {
             span.style.visibility = 'hidden';
 
             const input = document.createElement('input');
@@ -207,9 +209,11 @@
             input.style.left = `${leftPos}px`;
             input.style.top = `${topPos}px`;
             input.style.fontSize = `${item.height * pdfScale}px`;
-            input.style.width = `${Math.max(span.offsetWidth + 20, 100)}px`;
-            input.style.height = `${item.height * pdfScale * 1.2}px`;
-            input.style.backgroundColor = 'white'; // Whiteout background hides background text
+            input.style.width = `${(item.width * pdfScale) + 15}px`;
+            input.style.height = `${item.height * pdfScale * 1.1}px`;
+            
+            // Auto Color එක Input එකේ පසුබිමට දීම
+            input.style.backgroundColor = bgRGB;
 
             pageWrapper.appendChild(input);
             input.focus();
@@ -219,17 +223,19 @@
                 if (input.value !== item.str) {
                     textEdits.push({
                         x: leftPos / pdfScale,
-                        y: originalPageHeight - (topPos / pdfScale) - item.height, // Map to PDF points system
+                        y: originalPageHeight - (topPos / pdfScale) - item.height, 
                         newText: input.value,
                         fontSize: item.height,
-                        originalWidth: span.offsetWidth / pdfScale,
-                        originalHeight: item.height
+                        originalWidth: (item.width * pdfScale) / pdfScale,
+                        originalHeight: item.height,
+                        bgColor: { r: r/255, g: g/255, b: b/255 } // PDF එකට පාට pass කිරීම
                     });
                     
-                    // Simulate live editor view updates directly onto current browser preview canvas
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(leftPos, topPos, span.offsetWidth + 10, item.height * pdfScale * 1.1);
+                    // Preview Canvas එක මත හඳුනාගත් පාටින්ම කොටුවක් ඇඳ පැරණි අකුරු මැකීම
+                    ctx.fillStyle = bgRGB;
+                    ctx.fillRect(leftPos, topPos, (item.width * pdfScale) + 10, item.height * pdfScale * 1.1);
                     
+                    // අලුත් අකුරු ඇඳීම (කළු පාටින්)
                     ctx.fillStyle = '#000000';
                     ctx.font = `${item.height * pdfScale}px sans-serif`;
                     ctx.fillText(input.value, leftPos, topPos + (item.height * pdfScale * 0.85));
@@ -245,23 +251,18 @@
             input.addEventListener('blur', saveEdits);
         }
 
-        // --- Handle Dragging and Dropping Images ---
+        // --- Drag & Drop Image Logic ---
         viewerContainer.addEventListener('dragover', (e) => e.preventDefault());
-
         viewerContainer.addEventListener('drop', (e) => {
             e.preventDefault();
             const files = e.dataTransfer.files;
             if (files.length > 0 && files[0].type.startsWith('image/')) {
-                const file = files[0];
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const rect = viewerContainer.getBoundingClientRect();
-                    const dropX = e.clientX - rect.left;
-                    const dropY = e.clientY - rect.top;
-
-                    createImageOverlay(event.target.result, dropX, dropY);
+                    createImageOverlay(event.target.result, e.clientX - rect.left, e.clientY - rect.top);
                 };
-                reader.readAsDataURL(file);
+                reader.readAsDataURL(files[0]);
             }
         });
 
@@ -270,16 +271,14 @@
             const wrapper = document.createElement('div');
             wrapper.className = 'dropped-image';
             wrapper.id = imgId;
-            wrapper.style.left = `${x - 60}px`;
-            wrapper.style.top = `${y - 60}px`;
-            wrapper.style.width = '120px';
-            wrapper.style.height = '120px';
+            wrapper.style.left = `${x - 50}px`;
+            wrapper.style.top = `${y - 50}px`;
+            wrapper.style.width = '100px';
+            wrapper.style.height = '100px';
 
             const img = document.createElement('img');
             img.src = base64Src;
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.objectFit = 'cover';
+            img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'cover';
             wrapper.appendChild(img);
 
             const deleteBtn = document.createElement('div');
@@ -290,41 +289,29 @@
                 imageEdits = imageEdits.filter(i => i.id !== imgId);
             };
             wrapper.appendChild(deleteBtn);
-
             pageWrapper.appendChild(wrapper);
 
             const currentEdit = {
                 id: imgId,
-                x: (x - 60) / pdfScale,
-                y: originalPageHeight - ((y + 60) / pdfScale),
-                w: 120 / pdfScale,
-                h: 120 / pdfScale,
+                x: (x - 50) / pdfScale,
+                y: originalPageHeight - ((y + 50) / pdfScale),
+                w: 100 / pdfScale,
+                h: 100 / pdfScale,
                 src: base64Src
             };
             imageEdits.push(currentEdit);
 
-            // Drag movement listener
             wrapper.onmousedown = function(e) {
                 if (e.target === deleteBtn) return;
-                let startX = e.clientX;
-                let startY = e.clientY;
-                
+                let startX = e.clientX, startY = e.clientY;
                 function moveAt(e) {
-                    let dx = e.clientX - startX;
-                    let dy = e.clientY - startY;
-                    let newLeft = wrapper.offsetLeft + dx;
-                    let newTop = wrapper.offsetTop + dy;
-                    
-                    wrapper.style.left = newLeft + 'px';
-                    wrapper.style.top = newTop + 'px';
-                    
-                    startX = e.clientX;
-                    startY = e.clientY;
-
-                    currentEdit.x = newLeft / pdfScale;
-                    currentEdit.y = originalPageHeight - ((newTop + wrapper.offsetHeight) / pdfScale);
+                    let dx = e.clientX - startX, dy = e.clientY - startY;
+                    let nl = wrapper.offsetLeft + dx, nt = wrapper.offsetTop + dy;
+                    wrapper.style.left = nl + 'px'; wrapper.style.top = nt + 'px';
+                    startX = e.clientX; startY = e.clientY;
+                    currentEdit.x = nl / pdfScale;
+                    currentEdit.y = originalPageHeight - ((nt + wrapper.offsetHeight) / pdfScale);
                 }
-
                 document.addEventListener('mousemove', moveAt);
                 document.onmouseup = function() {
                     document.removeEventListener('mousemove', moveAt);
@@ -333,23 +320,21 @@
             };
         }
 
-        // --- Export Final Modified PDF ---
+        // --- Save and Export ---
         downloadBtn.addEventListener('click', async () => {
             if (!originalBytes) return;
-
             const { PDFDocument, rgb } = PDFLib;
             const pdfDocInstance = await PDFDocument.load(originalBytes);
-            const pages = pdfDocInstance.getPages();
-            const firstPage = pages[0];
+            const firstPage = pdfDocInstance.getPages()[0];
 
-            // 1. Apply Whiteout Over Old Text and Insert New Text Changes
+            // 1. හඳුනාගත් පසුබිම් පාටින්ම වසා නව අකුරු ලිවීම
             textEdits.forEach(edit => {
                 firstPage.drawRectangle({
                     x: edit.x,
-                    y: edit.y,
-                    width: edit.originalWidth * 1.5,
-                    height: edit.originalHeight * 1.2,
-                    color: rgb(1, 1, 1),
+                    y: edit.y - 2,
+                    width: edit.originalWidth * 1.2,
+                    height: edit.originalHeight * 1.3,
+                    color: rgb(edit.bgColor.r, edit.bgColor.g, edit.bgColor.b), // Auto Detected Color
                 });
                 
                 firstPage.drawText(edit.newText, {
@@ -360,15 +345,11 @@
                 });
             });
 
-            // 2. Embed Dropped Images onto the exact location
+            // 2. පින්තූර එකතු කිරීම
             for (const imgEdit of imageEdits) {
                 const imgDataBytes = await fetch(imgEdit.src).then(res => res.arrayBuffer());
-                let embeddedImg;
-                if (imgEdit.src.includes('image/png')) {
-                    embeddedImg = await pdfDocInstance.embedPng(imgDataBytes);
-                } else {
-                    embeddedImg = await pdfDocInstance.embedJpg(imgDataBytes);
-                }
+                const embeddedImg = imgEdit.src.includes('image/png') ? 
+                    await pdfDocInstance.embedPng(imgDataBytes) : await pdfDocInstance.embedJpg(imgDataBytes);
 
                 firstPage.drawImage(embeddedImg, {
                     x: imgEdit.x,
@@ -382,7 +363,7 @@
             const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = "edited_by_sejda_style.pdf";
+            link.download = "perfect_edited_fixed.pdf";
             link.click();
         });
     </script>
