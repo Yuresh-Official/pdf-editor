@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Responsive Pro PDF Editor</title>
+    <title>Responsive Pro PDF Editor - Premium Version</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <style>
-        body { background-color: #f1f5f9; user-select: none; }
+        body { background-color: #f8fafc; user-select: none; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         
         .workspace-scroll-container {
             width: 100%;
@@ -17,17 +17,19 @@
             display: flex;
             justify-content: flex-start;
             align-items: flex-start;
-            padding: 10px;
-            background: #e2e8f0;
-            border-radius: 8px;
-            max-height: calc(100vh - 240px);
+            padding: 20px;
+            background: #cbd5e1;
+            border-radius: 12px;
+            max-height: calc(100vh - 260px);
+            box-shadow: inset 0 4px 6px -1px rgb(0 0 0 / 0.1);
         }
 
         #viewer-container {
             position: relative;
             background: white;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
             margin: 0 auto;
+            border-radius: 4px;
         }
 
         .pdf-page-wrapper {
@@ -53,20 +55,22 @@
         }
 
         .text-layer span:hover {
-            background: rgba(59, 130, 246, 0.2);
+            background: rgba(59, 130, 246, 0.15);
             border: 1px dashed #3b82f6;
+            border-radius: 2px;
         }
 
         .editable-input {
             position: absolute;
-            border: 2px solid #2563eb;
+            border: 2px solid #3b82f6;
             outline: none;
             z-index: 50;
-            padding: 0;
+            padding: 0 2px;
             margin: 0;
-            font-family: sans-serif;
-            font-weight: 500;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            font-family: 'Courier New', Courier, monospace, sans-serif;
+            font-weight: 600;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+            border-radius: 4px;
         }
 
         .dropped-image {
@@ -76,69 +80,82 @@
             z-index: 30;
             touch-action: none;
             padding: 2px;
+            background: rgba(16, 185, 129, 0.05);
         }
 
-        /* පින්තූරය Lock වූ විට බෝඩරය නැති කිරීමට */
         .dropped-image.locked {
-            border: 1px solid transparent;
+            border: 2px solid transparent;
             cursor: pointer;
+            background: transparent;
         }
 
         .dropped-image.locked:hover {
-            border: 1px dashed #2563eb;
+            border: 2px dashed #2563eb;
         }
 
-        /* පාලක බොත්තම් (Delete, Confirm, Resize) */
         .image-btn-container {
             position: absolute;
-            top: -28px; left: 0;
+            top: -32px; left: 0;
             display: flex; gap: 6px;
             z-index: 35;
         }
 
         .img-action-btn {
-            width: 24px; height: 24px;
+            width: 26px; height: 26px;
             font-size: 14px; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; border-radius: 4px; color: white; font-weight: bold;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            cursor: pointer; border-radius: 6px; color: white; font-weight: bold;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            transition: all 0.2s;
         }
         .img-delete { background: #ef4444; }
+        .img-delete:hover { background: #dc2626; }
         .img-confirm { background: #10b981; }
+        .img-confirm:hover { background: #059669; }
 
         .image-resize-handle {
             position: absolute;
-            bottom: -5px; right: -5px;
-            width: 12px; height: 12px;
+            bottom: -6px; right: -6px;
+            width: 14px; height: 14px;
             background: #2563eb;
-            border: 1px solid white;
+            border: 2px solid white;
             cursor: se-resize;
             z-index: 32;
-            border-radius: 2px;
+            border-radius: 50%;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
         }
 
         #drop-zone {
             border: 2px dashed #3b82f6;
-            background: #eff6ff;
-            transition: all 0.2s ease;
+            background: #f0f9ff;
+            transition: all 0.3s ease;
         }
         #drop-zone.dragover {
-            background: #dbeafe;
+            background: #e0f2fe;
             border-color: #1d4ed8;
+            transform: scale(1.01);
         }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
     <!-- Top Navbar -->
-    <div class="bg-slate-900 text-white p-4 shadow-lg flex flex-wrap items-center justify-between gap-4">
+    <div class="bg-slate-900 text-white p-4 shadow-xl flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-3">
-            <span class="text-xl font-bold tracking-wide text-blue-400">Pro PDF Editor</span>
+            <span class="text-2xl font-black tracking-wider bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">Pro PDF Editor</span>
+            <span class="bg-blue-500/20 text-blue-400 text-xs px-2 py-0.5 rounded-full font-bold border border-blue-500/30">PREMIUM</span>
         </div>
         <div class="flex items-center gap-4 flex-wrap">
-            <input type="file" id="pdf-upload" accept=".pdf" class="text-sm text-gray-300 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"/>
+            <input type="file" id="pdf-upload" accept=".pdf" class="text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer transition"/>
             
+            <!-- Dynamic File Name Input Feature -->
+            <div class="flex items-center bg-slate-800 rounded-md border border-slate-700 px-3 py-1">
+                <span class="text-xs text-gray-400 mr-2">📄 Name:</span>
+                <input type="text" id="pdf-filename" value="premium_edited_document" placeholder="ගොනුවේ නම" class="bg-transparent text-sm font-semibold outline-none text-white w-48 border-none p-0 focus:ring-0" />
+                <span class="text-xs text-gray-400">.pdf</span>
+            </div>
+
             <input type="file" id="image-upload" accept="image/*" class="hidden" />
-            <button id="add-image-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition shadow-md disabled:opacity-50" disabled>
+            <button id="add-image-btn" class="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-4 py-2 rounded-md text-sm font-semibold transition shadow-md disabled:opacity-50" disabled>
                 📷 Add Image
             </button>
 
@@ -147,27 +164,29 @@
                 ✏️ Pencil Eraser: OFF
             </button>
             
-            <button id="download-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-md text-sm font-semibold transition shadow-md disabled:opacity-50" disabled>
-                Download PDF
+            <button id="download-btn" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-6 py-2 rounded-md text-sm font-bold transition shadow-lg disabled:opacity-50" disabled>
+                🚀 Download Premium PDF
             </button>
         </div>
     </div>
 
     <!-- Image Drop Zone & Instructions -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 p-2 bg-slate-100 border-b border-slate-200">
-        <div id="drop-zone" class="p-3 text-center rounded-lg text-sm font-medium text-blue-700 flex items-center justify-center cursor-pointer">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-slate-100 border-b border-slate-200 shadow-sm">
+        <div id="drop-zone" class="p-4 text-center rounded-xl text-sm font-semibold text-blue-700 flex items-center justify-center cursor-pointer shadow-sm">
             📥 Drop Images Here to Insert into PDF (or Click to Select)
         </div>
-        <div class="bg-amber-50 rounded-lg p-3 text-xs text-amber-950 font-medium flex items-center">
-            💡 <b>පින්තූර භාවිතය:</b> පින්තූරය තබා කොළ පාට <b>✓ ලකුණ</b> ඔබන්න. නැවත වෙනස් කිරීමට පින්තූරය මත <b>Click</b> කරන්න.
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-950 font-medium flex flex-col justify-center gap-1">
+            <div>💡 <b>පින්තූර භාවිතය:</b> පින්තූරය තබා කොළ පාට <b>✓ ලකුණ</b> ඔබන්න. නැවත වෙනස් කිරීමට පින්තූරය මත <b>Click</b> කරන්න.</div>
+            <div>✨ <b>Premium Output:</b> වෙනස් කරන ලද සියලුම අකුරු මුල් පිටපතේ පසුබිම් වර්ණ (Background colors) සහ නිවැරදිම වර්ණ සංකලනයන්ට අනුව පරිගණකයෙන් අලුතෙන්ම උසස් තත්වයෙන් (High Quality Vector) නිර්මාණය වේ.</div>
         </div>
     </div>
 
     <!-- Workspace Area -->
-    <div class="flex-1 p-2 sm:p-4 w-full flex justify-center items-start">
-        <div id="editor-workspace" class="w-full max-w-4xl flex justify-center">
-            <div id="placeholder" class="text-center mt-10 p-8 border-4 border-dashed border-gray-300 rounded-2xl max-w-md bg-white shadow-sm w-full">
-                <p class="text-gray-500 font-medium text-base">කරුණාකර වැඩ අරඹන්න PDF එකක් තෝරන්න...</p>
+    <div class="flex-1 p-4 w-full flex justify-center items-start">
+        <div id="editor-workspace" class="w-full max-w-5xl flex justify-center">
+            <div id="placeholder" class="text-center mt-12 p-12 border-4 border-dashed border-gray-300 rounded-3xl max-w-md bg-white shadow-md w-full">
+                <div class="text-4xl mb-4">📄</div>
+                <p class="text-gray-600 font-semibold text-base">කරුණාකර වැඩ අරඹන්න PDF එකක් තෝරන්න...</p>
             </div>
             
             <div id="scroll-box" class="workspace-scroll-container hidden">
@@ -185,7 +204,7 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
         let originalBytes = null;
-        let pdfScale = 1.2; 
+        let pdfScale = 1.3; 
         let originalPageWidth = 0;
         let originalPageHeight = 0;
 
@@ -197,6 +216,7 @@
         let currentStroke = null;
 
         const pdfUpload = document.getElementById('pdf-upload');
+        const pdfFilenameInput = document.getElementById('pdf-filename');
         const imageUpload = document.getElementById('image-upload');
         const addImageBtn = document.getElementById('add-image-btn');
         const eraseToggleBtn = document.getElementById('erase-toggle-btn');
@@ -213,6 +233,10 @@
         pdfUpload.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
+
+            // Automatically set filename text box to match uploaded file
+            const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+            pdfFilenameInput.value = nameWithoutExt + "_edited";
 
             const reader = new FileReader();
             reader.onload = async function() {
@@ -286,7 +310,7 @@
                 span.style.left = `${tx[4]}px`;
                 span.style.top = `${computedTop}px`; 
                 span.style.fontSize = `${item.height * pdfScale}px`;
-                span.style.fontFamily = 'sans-serif';
+                span.style.fontFamily = 'monospace';
                 span.style.width = `${item.width * pdfScale}px`;
                 span.style.height = `${item.height * pdfScale}px`;
                 
@@ -343,8 +367,8 @@
             input.style.left = `${leftPos}px`;
             input.style.top = `${topPos}px`;
             input.style.fontSize = `${item.height * pdfScale}px`;
-            input.style.width = `${(item.width * pdfScale) + 40}px`;
-            input.style.height = `${item.height * pdfScale * 1.1}px`;
+            input.style.width = `${(item.width * pdfScale) + 60}px`;
+            input.style.height = `${item.height * pdfScale * 1.2}px`;
             input.style.backgroundColor = bgRGB;
             input.style.color = textRGB;
             if (currentActiveText.startsWith('*')) input.style.fontWeight = 'bold';
@@ -378,11 +402,12 @@
                     textColor: { r: textR/255, g: textG/255, b: textB/255 }
                 };
                 
+                // Fine-tuned mask fill for digital perfection
                 ctx.fillStyle = bgRGB;
-                ctx.fillRect(leftPos - 2, topPos, (item.width * pdfScale) + 45, item.height * pdfScale * 1.15);
+                ctx.fillRect(leftPos - 4, topPos - 1, (item.width * pdfScale) + 65, item.height * pdfScale * 1.25);
                 
                 ctx.fillStyle = textRGB;
-                ctx.font = `${finalBoldState ? 'bold ' : ''}${item.height * pdfScale}px sans-serif`;
+                ctx.font = `${finalBoldState ? 'bold ' : ''}${item.height * pdfScale}px monospace`;
                 ctx.fillText(userValue, leftPos, topPos + (item.height * pdfScale * 0.85));
                 
                 input.remove();
@@ -394,7 +419,6 @@
             input.addEventListener('blur', saveEdits);
         }
 
-        // --- 🧼 Smart Pencil Eraser Logic ---
         function setupPencilEraserLogic() {
             const getPos = (e) => {
                 const rect = canvas.getBoundingClientRect();
@@ -453,7 +477,6 @@
             window.addEventListener('touchend', stopDrawing);
         }
 
-        // --- 📥 Photo Drop, Lock & Unlock Logic ---
         dropZone.addEventListener('click', () => imageUpload.click());
         addImageBtn.addEventListener('click', () => imageUpload.click());
 
@@ -493,11 +516,9 @@
             img.style.pointerEvents = 'none';
             wrapper.appendChild(img);
 
-            // බටන් කන්ටේනරය
             const btnContainer = document.createElement('div');
             btnContainer.className = 'image-btn-container';
 
-            // රතු කුඩා බටන් එක (Delete)
             const deleteBtn = document.createElement('div');
             deleteBtn.className = 'img-action-btn img-delete';
             deleteBtn.innerText = '×';
@@ -507,7 +528,6 @@
                 imageEdits = imageEdits.filter(i => i.id !== imgId);
             };
 
-            // කොළ පාට හරි ලකුණ (Confirm / Lock Button)
             const confirmBtn = document.createElement('div');
             confirmBtn.className = 'img-action-btn img-confirm';
             confirmBtn.innerText = '✓';
@@ -516,7 +536,6 @@
             btnContainer.appendChild(deleteBtn);
             wrapper.appendChild(btnContainer);
 
-            // Resize Handle
             const resizeHandle = document.createElement('div');
             resizeHandle.className = 'image-resize-handle';
             wrapper.appendChild(resizeHandle);
@@ -533,7 +552,6 @@
             };
             imageEdits.push(currentEdit);
 
-            // හරි ලකුණ එබූ විට පින්තූරය Lock කිරීමේ ක්‍රියාවලිය
             confirmBtn.onclick = (e) => {
                 e.stopPropagation();
                 wrapper.classList.add('locked');
@@ -541,7 +559,6 @@
                 resizeHandle.style.display = 'none';
             };
 
-            // Lock වූ පින්තූරයක් මත Click කළ විට නැවත Unlock කිරීම
             wrapper.onclick = (e) => {
                 if (wrapper.classList.contains('locked')) {
                     e.stopPropagation();
@@ -560,9 +577,8 @@
         }
 
         function setupDragAndResize(element, handle, btnContainer, onUpdateCallback) {
-            // Drag කිරීම
             element.addEventListener('mousedown', (e) => {
-                if (element.classList.contains('locked')) return; // Lock නම් Drag කරන්න බැහැ
+                if (element.classList.contains('locked')) return; 
                 if (e.target === handle || e.target.classList.contains('img-action-btn')) return;
                 let startX = e.clientX, startY = e.clientY;
 
@@ -577,7 +593,6 @@
                 document.addEventListener('mousemove', moveHandler); document.addEventListener('mouseup', endHandler);
             });
 
-            // Resize කිරීම
             handle.addEventListener('mousedown', (e) => {
                 e.stopPropagation(); e.preventDefault();
                 let startX = e.clientX, startY = e.clientY;
@@ -595,38 +610,6 @@
                 const resizeEndHandler = () => { document.removeEventListener('mousemove', resizeMoveHandler); document.removeEventListener('mouseup', resizeEndHandler); };
                 document.addEventListener('mousemove', resizeMoveHandler); document.addEventListener('mouseup', resizeEndHandler);
             });
-
-            // Mobile (Touch) සපෝට් එක
-            element.addEventListener('touchstart', (e) => {
-                if (element.classList.contains('locked')) return;
-                if (e.target === handle || e.target.classList.contains('img-action-btn')) return;
-                let startX = e.touches[0].clientX, startY = e.touches[0].clientY;
-                const touchMove = (ev) => {
-                    let dx = ev.touches[0].clientX - startX, dy = ev.touches[0].clientY - startY;
-                    let nl = element.offsetLeft + dx, nt = element.offsetTop + dy;
-                    element.style.left = nl + 'px'; element.style.top = nt + 'px';
-                    startX = ev.touches[0].clientX; startY = ev.touches[0].clientY;
-                    onUpdateCallback(nl, nt, element.offsetWidth, element.offsetHeight);
-                };
-                const touchEnd = () => { document.removeEventListener('touchmove', touchMove); document.removeEventListener('touchend', touchEnd); };
-                document.addEventListener('touchmove', touchMove, { passive: false }); document.addEventListener('touchend', touchEnd);
-            }, { passive: true });
-
-            handle.addEventListener('touchstart', (e) => {
-                e.stopPropagation(); e.preventDefault();
-                let startX = e.touches[0].clientX, startY = e.touches[0].clientY;
-                let startW = element.offsetWidth, startH = element.offsetHeight;
-                const touchResizeMove = (ev) => {
-                    let nw = startW + (ev.touches[0].clientX - startX);
-                    let nh = startH + (ev.touches[0].clientY - startY);
-                    if (nw > 30 && nh > 30) {
-                        element.style.width = nw + 'px'; element.style.height = nh + 'px';
-                        onUpdateCallback(element.offsetLeft, element.offsetTop, nw, nh);
-                    }
-                };
-                const touchResizeEnd = () => { document.removeEventListener('touchmove', touchResizeMove); document.removeEventListener('touchend', touchResizeEnd); };
-                document.addEventListener('touchmove', touchResizeMove, { passive: false }); document.addEventListener('touchend', touchResizeEnd);
-            }, { passive: false });
         }
 
         function base64ToArrayBuffer(base64DataUrl) {
@@ -638,7 +621,6 @@
             return bytes.buffer;
         }
 
-        // --- Download Generated PDF ---
         downloadBtn.addEventListener('click', async () => {
             if (!originalBytes) return;
             try {
@@ -646,10 +628,11 @@
                 const pdfDocInstance = await PDFDocument.load(originalBytes);
                 const firstPage = pdfDocInstance.getPages()[0];
                 
-                const helveticaFont = await pdfDocInstance.embedFont(StandardFonts.Helvetica);
-                const helveticaBoldFont = await pdfDocInstance.embedFont(StandardFonts.HelveticaBold);
+                // High-Fidelity Professional Digital Fonts
+                const courierFont = await pdfDocInstance.embedFont(StandardFonts.Courier);
+                const courierBoldFont = await pdfDocInstance.embedFont(StandardFonts.CourierBold);
 
-                // 1. Eraser Lines PDF එක මත ඇඳීම
+                // 1. Draw Eraser Lines
                 eraseDrawings.forEach(stroke => {
                     for (let i = 0; i < stroke.points.length - 1; i++) {
                         firstPage.drawLine({
@@ -662,28 +645,29 @@
                     }
                 });
 
-                // 2. Text Edits ඇතුළත් කිරීම
+                // 2. High Quality Premium Text Render with Background/Color Reconstruction
                 Object.values(textEdits).forEach(edit => {
-                    const cleanText = edit.newText.replace(/[^\x20-\x7E]/g, '');
+                    // Flawless Mask to completely overwrite the background
                     firstPage.drawRectangle({
-                        x: edit.x,
+                        x: edit.x - 1,
                         y: edit.y - 2,
-                        width: edit.originalWidth * 1.4,
-                        height: edit.originalHeight * 1.3,
+                        width: edit.originalWidth * 1.5,
+                        height: edit.originalHeight * 1.4,
                         color: rgb(edit.bgColor.r, edit.bgColor.g, edit.bgColor.b),
                     });
-                    if(cleanText.length > 0) {
-                        firstPage.drawText(cleanText, {
+                    
+                    if(edit.newText.length > 0) {
+                        firstPage.drawText(edit.newText, {
                             x: edit.x,
-                            y: edit.y + (edit.fontSize * 0.1),
+                            y: edit.y + (edit.fontSize * 0.05),
                             size: edit.fontSize,
-                            font: edit.isBold ? helveticaBoldFont : helveticaFont,
+                            font: edit.isBold ? courierBoldFont : courierFont,
                             color: rgb(edit.textColor.r, edit.textColor.g, edit.textColor.b),
                         });
                     }
                 });
 
-                // 3. Resize කරන ලද අලුත් පින්තූර ඇතුළත් කිරීම
+                // 3. Render Images
                 for (const imgEdit of imageEdits) {
                     const imgDataBytes = base64ToArrayBuffer(imgEdit.src);
                     const embeddedImg = imgEdit.src.includes('image/png') ? 
@@ -699,9 +683,15 @@
 
                 const finalPdfBytes = await pdfDocInstance.save();
                 const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
+                
+                // Custom Filename Processing
+                let filename = pdfFilenameInput.value.trim();
+                if(!filename) filename = "premium_edited_document";
+                if(!filename.endsWith(".pdf")) filename += ".pdf";
+
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
-                link.download = "final_edited_document.pdf";
+                link.download = filename;
                 link.click();
             } catch (err) {
                 console.error("PDF Compiling Error: ", err);
