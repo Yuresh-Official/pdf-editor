@@ -3,32 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Responsive Pro PDF Editor - Premium Version</title>
+    <title>Premium Pro PDF Editor - Fixed Edition</title>
+    <!-- Tailwind CSS & Professional Fonts -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Required PDF Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    
     <style>
-        body { background-color: #f8fafc; user-select: none; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { 
+            background-color: #f1f5f9; 
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+        }
         
         .workspace-scroll-container {
             width: 100%;
-            overflow-x: auto;
-            overflow-y: auto;
+            overflow: auto;
             display: flex;
-            justify-content: flex-start;
+            justify-content: center;
             align-items: flex-start;
-            padding: 20px;
+            padding: 30px;
             background: #cbd5e1;
-            border-radius: 12px;
-            max-height: calc(100vh - 260px);
-            box-shadow: inset 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            border-radius: 16px;
+            max-height: calc(100vh - 240px);
+            box-shadow: inset 0 4px 10px rgb(0 0 0 / 0.08);
         }
 
         #viewer-container {
             position: relative;
             background: white;
-            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-            margin: 0 auto;
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
             border-radius: 4px;
         }
 
@@ -51,41 +58,41 @@
             white-space: pre;
             cursor: text;
             transform-origin: 0% 0%;
-            border: 1px solid transparent;
         }
 
         .text-layer span:hover {
-            background: rgba(59, 130, 246, 0.15);
-            border: 1px dashed #3b82f6;
+            background: rgba(37, 99, 235, 0.12);
+            outline: 1px dashed #2563eb;
             border-radius: 2px;
         }
 
         .editable-input {
             position: absolute;
-            border: 2px solid #3b82f6;
+            border: 2px solid #2563eb;
             outline: none;
             z-index: 50;
-            padding: 0 2px;
+            padding: 0 4px;
             margin: 0;
-            font-family: 'Courier New', Courier, monospace, sans-serif;
-            font-weight: 600;
-            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+            font-family: 'Courier Prime', monospace;
+            font-weight: 700;
             border-radius: 4px;
+            box-shadow: 0 10px 20px rgb(0 0 0 / 0.15);
         }
 
+        /* Improved & Fixed Image Styling */
         .dropped-image {
             position: absolute;
             cursor: move;
             border: 2px dashed #10b981;
-            z-index: 30;
-            touch-action: none;
-            padding: 2px;
+            z-index: 40;
+            padding: 4px;
             background: rgba(16, 185, 129, 0.05);
+            touch-action: none;
+            box-sizing: border-box;
         }
 
         .dropped-image.locked {
             border: 2px solid transparent;
-            cursor: pointer;
             background: transparent;
         }
 
@@ -95,98 +102,89 @@
 
         .image-btn-container {
             position: absolute;
-            top: -32px; left: 0;
+            top: -36px; left: 0;
             display: flex; gap: 6px;
-            z-index: 35;
+            z-index: 45;
         }
 
         .img-action-btn {
-            width: 26px; height: 26px;
+            width: 28px; height: 28px;
             font-size: 14px; display: flex; align-items: center; justify-content: center;
             cursor: pointer; border-radius: 6px; color: white; font-weight: bold;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgb(0 0 0 / 0.1);
         }
         .img-delete { background: #ef4444; }
-        .img-delete:hover { background: #dc2626; }
         .img-confirm { background: #10b981; }
-        .img-confirm:hover { background: #059669; }
 
+        /* Highly Visible Resize Handle */
         .image-resize-handle {
             position: absolute;
             bottom: -6px; right: -6px;
-            width: 14px; height: 14px;
+            width: 16px; height: 16px;
             background: #2563eb;
             border: 2px solid white;
             cursor: se-resize;
-            z-index: 32;
+            z-index: 46;
             border-radius: 50%;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            box-shadow: 0 4px 6px rgb(0 0 0 / 0.15);
         }
 
         #drop-zone {
             border: 2px dashed #3b82f6;
             background: #f0f9ff;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }
         #drop-zone.dragover {
             background: #e0f2fe;
             border-color: #1d4ed8;
-            transform: scale(1.01);
         }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <!-- Top Navbar -->
-    <div class="bg-slate-900 text-white p-4 shadow-xl flex flex-wrap items-center justify-between gap-4">
+    <!-- Top Navigation Bar -->
+    <div class="bg-slate-900 text-white p-4 shadow-md flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-3">
-            <span class="text-2xl font-black tracking-wider bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">Pro PDF Editor</span>
-            <span class="bg-blue-500/20 text-blue-400 text-xs px-2 py-0.5 rounded-full font-bold border border-blue-500/30">PREMIUM</span>
+            <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-teal-400 bg-clip-text text-transparent">Premium PDF Pro</span>
         </div>
-        <div class="flex items-center gap-4 flex-wrap">
-            <input type="file" id="pdf-upload" accept=".pdf" class="text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer transition"/>
+        <div class="flex items-center gap-3 flex-wrap">
+            <input type="file" id="pdf-upload" accept=".pdf" class="text-sm text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"/>
             
-            <!-- Dynamic File Name Input Feature -->
-            <div class="flex items-center bg-slate-800 rounded-md border border-slate-700 px-3 py-1">
-                <span class="text-xs text-gray-400 mr-2">📄 Name:</span>
-                <input type="text" id="pdf-filename" value="premium_edited_document" placeholder="ගොනුවේ නම" class="bg-transparent text-sm font-semibold outline-none text-white w-48 border-none p-0 focus:ring-0" />
+            <!-- File Name Input Container -->
+            <div class="flex items-center bg-slate-800 rounded px-3 py-1.5 border border-slate-700">
+                <span class="text-xs text-gray-400 mr-2">File Name:</span>
+                <input type="text" id="pdf-filename" value="edited_document" placeholder="නම ඇතුලත් කරන්න" class="bg-transparent text-sm font-medium outline-none text-white w-40 border-none p-0 focus:ring-0" />
                 <span class="text-xs text-gray-400">.pdf</span>
             </div>
 
             <input type="file" id="image-upload" accept="image/*" class="hidden" />
-            <button id="add-image-btn" class="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-4 py-2 rounded-md text-sm font-semibold transition shadow-md disabled:opacity-50" disabled>
+            <button id="add-image-btn" class="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-4 py-2 rounded text-sm font-medium transition disabled:opacity-50" disabled>
                 📷 Add Image
             </button>
 
-            <!-- Pencil Eraser Mode Button -->
-            <button id="erase-toggle-btn" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition shadow-md disabled:opacity-50" disabled>
-                ✏️ Pencil Eraser: OFF
+            <button id="erase-toggle-btn" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded text-sm font-medium transition disabled:opacity-50" disabled>
+                ✏️ Eraser: OFF
             </button>
             
-            <button id="download-btn" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-6 py-2 rounded-md text-sm font-bold transition shadow-lg disabled:opacity-50" disabled>
-                🚀 Download Premium PDF
+            <button id="download-btn" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-5 py-2 rounded text-sm font-bold transition disabled:opacity-50" disabled>
+                🚀 Download PDF
             </button>
         </div>
     </div>
 
-    <!-- Image Drop Zone & Instructions -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-slate-100 border-b border-slate-200 shadow-sm">
-        <div id="drop-zone" class="p-4 text-center rounded-xl text-sm font-semibold text-blue-700 flex items-center justify-center cursor-pointer shadow-sm">
-            📥 Drop Images Here to Insert into PDF (or Click to Select)
-        </div>
-        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-950 font-medium flex flex-col justify-center gap-1">
-            <div>💡 <b>පින්තූර භාවිතය:</b> පින්තූරය තබා කොළ පාට <b>✓ ලකුණ</b> ඔබන්න. නැවත වෙනස් කිරීමට පින්තූරය මත <b>Click</b> කරන්න.</div>
-            <div>✨ <b>Premium Output:</b> වෙනස් කරන ලද සියලුම අකුරු මුල් පිටපතේ පසුබිම් වර්ණ (Background colors) සහ නිවැරදිම වර්ණ සංකලනයන්ට අනුව පරිගණකයෙන් අලුතෙන්ම උසස් තත්වයෙන් (High Quality Vector) නිර්මාණය වේ.</div>
+    <!-- Drag & Drop Zone Area -->
+    <div class="p-3 bg-slate-100 border-b border-slate-200">
+        <div id="drop-zone" class="p-4 text-center rounded-xl text-sm font-medium text-blue-600 flex items-center justify-center cursor-pointer shadow-inner">
+            📥 Drop Images Here to Insert / පින්තූර මෙතැනට Drag කර Drop කරන්න (Or Click to Select)
         </div>
     </div>
 
-    <!-- Workspace Area -->
-    <div class="flex-1 p-4 w-full flex justify-center items-start">
-        <div id="editor-workspace" class="w-full max-w-5xl flex justify-center">
-            <div id="placeholder" class="text-center mt-12 p-12 border-4 border-dashed border-gray-300 rounded-3xl max-w-md bg-white shadow-md w-full">
-                <div class="text-4xl mb-4">📄</div>
-                <p class="text-gray-600 font-semibold text-base">කරුණාකර වැඩ අරඹන්න PDF එකක් තෝරන්න...</p>
+    <!-- Main Editor Canvas Area -->
+    <div class="flex-1 p-6 w-full flex justify-center items-start">
+        <div id="editor-workspace" class="w-full max-w-4xl flex justify-center">
+            <div id="placeholder" class="text-center mt-12 p-12 border-2 border-dashed border-slate-300 rounded-2xl bg-white max-w-sm w-full shadow-sm">
+                <div class="text-3xl mb-3">📄</div>
+                <p class="text-slate-500 text-sm font-medium">වැඩ ආරම්භ කිරීමට PDF ගොනුවක් තෝරන්න.</p>
             </div>
             
             <div id="scroll-box" class="workspace-scroll-container hidden">
@@ -234,19 +232,15 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            // Automatically set filename text box to match uploaded file
             const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
             pdfFilenameInput.value = nameWithoutExt + "_edited";
 
             const reader = new FileReader();
             reader.onload = async function() {
                 originalBytes = new Uint8Array(this.result);
-                textEdits = {};
-                imageEdits = [];
-                eraseDrawings = [];
+                textEdits = {}; imageEdits = []; eraseDrawings = [];
                 isEraseModeActive = false;
-                eraseToggleBtn.innerText = "✏️ Pencil Eraser: OFF";
-                eraseToggleBtn.className = "bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition shadow-md";
+                eraseToggleBtn.innerText = "✏️ Eraser: OFF";
                 textLayerDiv.style.zIndex = '20';
                 
                 document.querySelectorAll('.dropped-image, .editable-input').forEach(el => el.remove());
@@ -264,12 +258,10 @@
         eraseToggleBtn.addEventListener('click', () => {
             isEraseModeActive = !isEraseModeActive;
             if (isEraseModeActive) {
-                eraseToggleBtn.innerText = "✏️ Pencil Eraser: ON";
-                eraseToggleBtn.className = "bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition shadow-md animate-pulse";
+                eraseToggleBtn.innerText = "✏️ Eraser: ON";
                 textLayerDiv.style.zIndex = '5';
             } else {
-                eraseToggleBtn.innerText = "✏️ Pencil Eraser: OFF";
-                eraseToggleBtn.className = "bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition shadow-md";
+                eraseToggleBtn.innerText = "✏️ Eraser: OFF";
                 textLayerDiv.style.zIndex = '20';
             }
         });
@@ -292,7 +284,7 @@
             await page.render(renderContext).promise;
 
             textLayerDiv.innerHTML = '';
-            setupPencilEraserLogic(); 
+            setupCanvasEraser(); 
 
             const textContent = await page.getTextContent();
             let idx = 0;
@@ -310,11 +302,11 @@
                 span.style.left = `${tx[4]}px`;
                 span.style.top = `${computedTop}px`; 
                 span.style.fontSize = `${item.height * pdfScale}px`;
-                span.style.fontFamily = 'monospace';
+                span.style.fontFamily = "'Courier Prime', monospace";
                 span.style.width = `${item.width * pdfScale}px`;
                 span.style.height = `${item.height * pdfScale}px`;
                 
-                const isFontBold = item.fontName.toLowerCase().includes('bold') || item.fontName.toLowerCase().includes('goth') || item.fontName.toLowerCase().includes('black');
+                const isFontBold = item.fontName.toLowerCase().includes('bold') || item.fontName.toLowerCase().includes('black');
 
                 span.addEventListener('click', (e) => {
                     if (isEraseModeActive) return;
@@ -347,16 +339,16 @@
                     }
 
                     const textRGB = `rgb(${textR}, ${textG}, ${textB})`;
-                    const currentActiveText = textEdits[span.id] ? textEdits[span.id].rawInput : (isFontBold ? `*${item.str}*` : item.str);
+                    const currentActiveText = textEdits[span.id] ? textEdits[span.id].rawInput : item.str;
 
-                    createInputOverlay(span, item, tx[4], computedTop, bgRGB, bgPixel, textRGB, textR, textG, textB, isFontBold, currentActiveText);
+                    createInputBox(span, item, tx[4], computedTop, bgRGB, bgPixel, textRGB, textR, textG, textB, isFontBold, currentActiveText);
                 });
 
                 textLayerDiv.appendChild(span);
             });
         }
 
-        function createInputOverlay(span, item, leftPos, topPos, bgRGB, bgPixel, textRGB, textR, textG, textB, isFontBold, currentActiveText) {
+        function createInputBox(span, item, leftPos, topPos, bgRGB, bgPixel, textRGB, textR, textG, textB, isFontBold, currentActiveText) {
             span.style.visibility = 'hidden';
 
             const input = document.createElement('input');
@@ -367,11 +359,11 @@
             input.style.left = `${leftPos}px`;
             input.style.top = `${topPos}px`;
             input.style.fontSize = `${item.height * pdfScale}px`;
-            input.style.width = `${(item.width * pdfScale) + 60}px`;
-            input.style.height = `${item.height * pdfScale * 1.2}px`;
+            input.style.width = `${(item.width * pdfScale) + 80}px`;
+            input.style.height = `${item.height * pdfScale * 1.25}px`;
             input.style.backgroundColor = bgRGB;
             input.style.color = textRGB;
-            if (currentActiveText.startsWith('*')) input.style.fontWeight = 'bold';
+            if (isFontBold) input.style.fontWeight = 'bold';
 
             pageWrapper.appendChild(input);
             input.focus();
@@ -379,47 +371,35 @@
 
             const saveEdits = () => {
                 let userValue = input.value;
-                let finalBoldState = isFontBold;
-                let rawInput = input.value;
-
-                if (userValue.startsWith('*') && userValue.endsWith('*') && userValue.length > 1) {
-                    finalBoldState = true;
-                    userValue = userValue.substring(1, userValue.length - 1);
-                } else {
-                    finalBoldState = false;
-                }
-
+                
                 textEdits[span.id] = {
                     x: leftPos / pdfScale,
                     y: originalPageHeight - (topPos / pdfScale) - item.height, 
                     newText: userValue,
-                    rawInput: rawInput,
+                    rawInput: userValue,
                     fontSize: item.height,
                     originalWidth: (item.width * pdfScale) / pdfScale,
                     originalHeight: item.height,
-                    isBold: finalBoldState,
+                    isBold: isFontBold,
                     bgColor: { r: bgPixel[0]/255, g: bgPixel[1]/255, b: bgPixel[2]/255 },
                     textColor: { r: textR/255, g: textG/255, b: textB/255 }
                 };
                 
-                // Fine-tuned mask fill for digital perfection
                 ctx.fillStyle = bgRGB;
-                ctx.fillRect(leftPos - 4, topPos - 1, (item.width * pdfScale) + 65, item.height * pdfScale * 1.25);
+                ctx.fillRect(leftPos - 2, topPos - 2, (item.width * pdfScale) + 85, item.height * pdfScale * 1.3);
                 
                 ctx.fillStyle = textRGB;
-                ctx.font = `${finalBoldState ? 'bold ' : ''}${item.height * pdfScale}px monospace`;
-                ctx.fillText(userValue, leftPos, topPos + (item.height * pdfScale * 0.85));
+                ctx.font = `${isFontBold ? 'bold ' : ''}${item.height * pdfScale}px 'Courier Prime', monospace`;
+                ctx.fillText(userValue, leftPos, topPos + (item.height * pdfScale * 0.88));
                 
                 input.remove();
             };
 
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') saveEdits();
-            });
+            input.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveEdits(); });
             input.addEventListener('blur', saveEdits);
         }
 
-        function setupPencilEraserLogic() {
+        function setupCanvasEraser() {
             const getPos = (e) => {
                 const rect = canvas.getBoundingClientRect();
                 const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -431,7 +411,6 @@
                 if (!isEraseModeActive) return;
                 isDrawing = true;
                 const pos = getPos(e);
-                
                 const pixel = ctx.getImageData(pos.x, pos.y, 1, 1).data;
                 const colorRGB = `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
 
@@ -442,73 +421,59 @@
 
                 ctx.beginPath();
                 ctx.moveTo(pos.x, pos.y);
-                ctx.lineWidth = 16; 
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
+                ctx.lineWidth = 14; 
+                ctx.lineCap = 'round'; ctx.lineJoin = 'round';
                 ctx.strokeStyle = colorRGB;
             };
 
             const draw = (e) => {
                 if (!isDrawing || !isEraseModeActive) return;
-                e.preventDefault();
                 const pos = getPos(e);
-
                 ctx.lineTo(pos.x, pos.y);
                 ctx.stroke();
-
                 currentStroke.points.push({ x: pos.x / pdfScale, y: originalPageHeight - (pos.y / pdfScale) });
             };
 
             const stopDrawing = () => {
-                if (!isDrawing) return;
-                isDrawing = false;
-                if (currentStroke && currentStroke.points.length > 0) {
-                    eraseDrawings.push(currentStroke);
-                }
-                currentStroke = null;
+                if (isDrawing && currentStroke) { eraseDrawings.push(currentStroke); }
+                isDrawing = false; currentStroke = null;
             };
 
             canvas.addEventListener('mousedown', startDrawing);
             canvas.addEventListener('mousemove', draw);
             window.addEventListener('mouseup', stopDrawing);
-
-            canvas.addEventListener('touchstart', startDrawing, { passive: false });
-            canvas.addEventListener('touchmove', draw, { passive: false });
-            window.addEventListener('touchend', stopDrawing);
         }
 
+        // Image Handling, Drag, Drop and Real-time Resizing Fixes
         dropZone.addEventListener('click', () => imageUpload.click());
         addImageBtn.addEventListener('click', () => imageUpload.click());
-
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
         dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('dragover');
-            handleImageFiles(e.dataTransfer.files, 80, 80);
+            e.preventDefault(); dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) processImage(e.dataTransfer.files[0]);
         });
-
         imageUpload.addEventListener('change', (e) => {
-            handleImageFiles(e.target.files, 80, 80);
+            if (e.target.files.length > 0) processImage(e.target.files[0]);
         });
 
-        function handleImageFiles(files, x, y) {
-            if (files.length > 0 && files[0].type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = (event) => createImageOverlay(event.target.result, x, y);
-                reader.readAsDataURL(files[0]);
-            }
+        function processImage(file) {
+            if (!file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = (event) => renderImageOnCanvas(event.target.result);
+            reader.readAsDataURL(file);
         }
 
-        function createImageOverlay(base64Src, x, y) {
+        function renderImageOnCanvas(base64Src) {
             const imgId = 'img_' + Date.now();
             const wrapper = document.createElement('div');
             wrapper.className = 'dropped-image';
             wrapper.id = imgId;
-            wrapper.style.left = `${x}px`;
-            wrapper.style.top = `${y}px`;
-            wrapper.style.width = '120px'; 
-            wrapper.style.height = '120px';
+            // Default fixed bounding square
+            wrapper.style.left = '50px';
+            wrapper.style.top = '50px';
+            wrapper.style.width = '140px'; 
+            wrapper.style.height = '140px';
 
             const img = document.createElement('img');
             img.src = base64Src;
@@ -520,20 +485,13 @@
             btnContainer.className = 'image-btn-container';
 
             const deleteBtn = document.createElement('div');
-            deleteBtn.className = 'img-action-btn img-delete';
-            deleteBtn.innerText = '×';
-            deleteBtn.onclick = (e) => {
-                e.stopPropagation();
-                wrapper.remove();
-                imageEdits = imageEdits.filter(i => i.id !== imgId);
-            };
+            deleteBtn.className = 'img-action-btn img-delete'; deleteBtn.innerText = '×';
+            deleteBtn.onclick = (e) => { e.stopPropagation(); wrapper.remove(); imageEdits = imageEdits.filter(i => i.id !== imgId); };
 
             const confirmBtn = document.createElement('div');
-            confirmBtn.className = 'img-action-btn img-confirm';
-            confirmBtn.innerText = '✓';
+            confirmBtn.className = 'img-action-btn img-confirm'; confirmBtn.innerText = '✓';
             
-            btnContainer.appendChild(confirmBtn);
-            btnContainer.appendChild(deleteBtn);
+            btnContainer.appendChild(confirmBtn); btnContainer.appendChild(deleteBtn);
             wrapper.appendChild(btnContainer);
 
             const resizeHandle = document.createElement('div');
@@ -542,83 +500,83 @@
             
             pageWrapper.appendChild(wrapper);
 
-            let currentEdit = {
+            let imageTrackingObj = {
                 id: imgId,
-                x: x / pdfScale,
-                y: originalPageHeight - ((y + 120) / pdfScale),
-                w: 120 / pdfScale,
-                h: 120 / pdfScale,
+                x: 50 / pdfScale,
+                y: originalPageHeight - ((50 + 140) / pdfScale),
+                w: 140 / pdfScale,
+                h: 140 / pdfScale,
                 src: base64Src
             };
-            imageEdits.push(currentEdit);
+            imageEdits.push(imageTrackingObj);
 
             confirmBtn.onclick = (e) => {
                 e.stopPropagation();
                 wrapper.classList.add('locked');
-                btnContainer.style.display = 'none';
-                resizeHandle.style.display = 'none';
+                btnContainer.style.display = 'none'; resizeHandle.style.display = 'none';
             };
 
             wrapper.onclick = (e) => {
                 if (wrapper.classList.contains('locked')) {
                     e.stopPropagation();
                     wrapper.classList.remove('locked');
-                    btnContainer.style.display = 'flex';
-                    resizeHandle.style.display = 'block';
+                    btnContainer.style.display = 'flex'; resizeHandle.style.display = 'block';
                 }
             };
 
-            setupDragAndResize(wrapper, resizeHandle, btnContainer, (nl, nt, nw, nh) => {
-                currentEdit.x = nl / pdfScale;
-                currentEdit.y = originalPageHeight - ((nt + nh) / pdfScale);
-                currentEdit.w = nw / pdfScale;
-                currentEdit.h = nh / pdfScale;
+            // Enhanced Accurate Drag & Resize Logic Implementation
+            setupImageInteractions(wrapper, resizeHandle, (updatedLeft, updatedTop, updatedWidth, updatedHeight) => {
+                imageTrackingObj.x = updatedLeft / pdfScale;
+                imageTrackingObj.y = originalPageHeight - ((updatedTop + updatedHeight) / pdfScale);
+                imageTrackingObj.w = updatedWidth / pdfScale;
+                imageTrackingObj.h = updatedHeight / pdfScale;
             });
         }
 
-        function setupDragAndResize(element, handle, btnContainer, onUpdateCallback) {
+        function setupImageInteractions(element, handle, onUpdate) {
+            // Drag feature
             element.addEventListener('mousedown', (e) => {
-                if (element.classList.contains('locked')) return; 
-                if (e.target === handle || e.target.classList.contains('img-action-btn')) return;
+                if (element.classList.contains('locked') || e.target === handle || e.target.classList.contains('img-action-btn')) return;
+                e.preventDefault();
                 let startX = e.clientX, startY = e.clientY;
-
-                const moveHandler = (ev) => {
-                    let dx = ev.clientX - startX, dy = ev.clientY - startY;
-                    let nl = element.offsetLeft + dx, nt = element.offsetTop + dy;
-                    element.style.left = nl + 'px'; element.style.top = nt + 'px';
+                
+                const onMouseMove = (ev) => {
+                    let dx = ev.clientX - startX; let dy = ev.clientY - startY;
+                    let nextLeft = element.offsetLeft + dx; let nextTop = element.offsetTop + dy;
+                    element.style.left = nextLeft + 'px'; element.style.top = nextTop + 'px';
                     startX = ev.clientX; startY = ev.clientY;
-                    onUpdateCallback(nl, nt, element.offsetWidth, element.offsetHeight);
+                    onUpdate(nextLeft, nextTop, element.offsetWidth, element.offsetHeight);
                 };
-                const endHandler = () => { document.removeEventListener('mousemove', moveHandler); document.removeEventListener('mouseup', endHandler); };
-                document.addEventListener('mousemove', moveHandler); document.addEventListener('mouseup', endHandler);
+                const onMouseUp = () => { document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); };
+                document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp);
             });
 
+            // True Aspect Drag & Resize feature
             handle.addEventListener('mousedown', (e) => {
                 e.stopPropagation(); e.preventDefault();
                 let startX = e.clientX, startY = e.clientY;
                 let startW = element.offsetWidth, startH = element.offsetHeight;
 
-                const resizeMoveHandler = (ev) => {
-                    let nw = startW + (ev.clientX - startX);
-                    let nh = startH + (ev.clientY - startY);
-                    if (nw > 30 && nh > 30) {
-                        element.style.width = nw + 'px';
-                        element.style.height = nh + 'px';
-                        onUpdateCallback(element.offsetLeft, element.offsetTop, nw, nh);
+                const onMouseMoveResize = (ev) => {
+                    let currentWidth = startW + (ev.clientX - startX);
+                    let currentHeight = startH + (ev.clientY - startY);
+                    if (currentWidth > 35 && currentHeight > 35) {
+                        element.style.width = currentWidth + 'px';
+                        element.style.height = currentHeight + 'px';
+                        onUpdate(element.offsetLeft, element.offsetTop, currentWidth, currentHeight);
                     }
                 };
-                const resizeEndHandler = () => { document.removeEventListener('mousemove', resizeMoveHandler); document.removeEventListener('mouseup', resizeEndHandler); };
-                document.addEventListener('mousemove', resizeMoveHandler); document.addEventListener('mouseup', resizeEndHandler);
+                const onMouseUpResize = () => { document.removeEventListener('mousemove', onMouseMoveResize); document.removeEventListener('mouseup', onMouseUpResize); };
+                document.addEventListener('mousemove', onMouseMoveResize); document.addEventListener('mouseup', onMouseUpResize);
             });
         }
 
-        function base64ToArrayBuffer(base64DataUrl) {
-            const base64Str = base64DataUrl.split(',')[1];
+        function base64ToArrayBuffer(base64Url) {
+            const base64Str = base64Url.split(',')[1];
             const binaryStr = window.atob(base64Str);
-            const len = binaryStr.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) { bytes[i] = binaryStr.charCodeAt(i); }
-            return bytes.buffer;
+            const uint8Array = new Uint8Array(binaryStr.length);
+            for (let i = 0; i < binaryStr.length; i++) { uint8Array[i] = binaryStr.charCodeAt(i); }
+            return uint8Array.buffer;
         }
 
         downloadBtn.addEventListener('click', async () => {
@@ -628,11 +586,10 @@
                 const pdfDocInstance = await PDFDocument.load(originalBytes);
                 const firstPage = pdfDocInstance.getPages()[0];
                 
-                // High-Fidelity Professional Digital Fonts
                 const courierFont = await pdfDocInstance.embedFont(StandardFonts.Courier);
                 const courierBoldFont = await pdfDocInstance.embedFont(StandardFonts.CourierBold);
 
-                // 1. Draw Eraser Lines
+                // 1. Hard Paint Eraser Strokes
                 eraseDrawings.forEach(stroke => {
                     for (let i = 0; i < stroke.points.length - 1; i++) {
                         firstPage.drawLine({
@@ -640,26 +597,20 @@
                             end: { x: stroke.points[i+1].x, y: stroke.points[i+1].y },
                             thickness: 14,
                             color: rgb(stroke.color.r, stroke.color.g, stroke.color.b),
-                            lineCap: 'round'
                         });
                     }
                 });
 
-                // 2. High Quality Premium Text Render with Background/Color Reconstruction
+                // 2. High-Fidelity Vector Font Rendering
                 Object.values(textEdits).forEach(edit => {
-                    // Flawless Mask to completely overwrite the background
                     firstPage.drawRectangle({
-                        x: edit.x - 1,
-                        y: edit.y - 2,
-                        width: edit.originalWidth * 1.5,
-                        height: edit.originalHeight * 1.4,
+                        x: edit.x - 1, y: edit.y - 1,
+                        width: edit.originalWidth * 1.4, height: edit.originalHeight * 1.3,
                         color: rgb(edit.bgColor.r, edit.bgColor.g, edit.bgColor.b),
                     });
-                    
-                    if(edit.newText.length > 0) {
+                    if(edit.newText.trim().length > 0) {
                         firstPage.drawText(edit.newText, {
-                            x: edit.x,
-                            y: edit.y + (edit.fontSize * 0.05),
+                            x: edit.x, y: edit.y + (edit.fontSize * 0.05),
                             size: edit.fontSize,
                             font: edit.isBold ? courierBoldFont : courierFont,
                             color: rgb(edit.textColor.r, edit.textColor.g, edit.textColor.b),
@@ -667,24 +618,21 @@
                     }
                 });
 
-                // 3. Render Images
+                // 3. Dynamic Precision Image Insertion
                 for (const imgEdit of imageEdits) {
-                    const imgDataBytes = base64ToArrayBuffer(imgEdit.src);
-                    const embeddedImg = imgEdit.src.includes('image/png') ? 
-                        await pdfDocInstance.embedPng(imgDataBytes) : await pdfDocInstance.embedJpg(imgDataBytes);
+                    const buffer = base64ToArrayBuffer(imgEdit.src);
+                    const embeddedImage = imgEdit.src.includes('image/png') ? 
+                        await pdfDocInstance.embedPng(buffer) : await pdfDocInstance.embedJpg(buffer);
 
-                    firstPage.drawImage(embeddedImg, {
-                        x: imgEdit.x,
-                        y: imgEdit.y,
-                        width: imgEdit.w,
-                        height: imgEdit.h
+                    firstPage.drawImage(embeddedImage, {
+                        x: imgEdit.x, y: imgEdit.y,
+                        width: imgEdit.w, height: imgEdit.h
                     });
                 }
 
                 const finalPdfBytes = await pdfDocInstance.save();
                 const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
                 
-                // Custom Filename Processing
                 let filename = pdfFilenameInput.value.trim();
                 if(!filename) filename = "premium_edited_document";
                 if(!filename.endsWith(".pdf")) filename += ".pdf";
@@ -694,8 +642,7 @@
                 link.download = filename;
                 link.click();
             } catch (err) {
-                console.error("PDF Compiling Error: ", err);
-                alert("Something went wrong while compiling your changes.");
+                alert("ගොනුව සකස් කිරීමේදී ගැටලුවක් මතු විය.");
             }
         });
     </script>
