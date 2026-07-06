@@ -75,18 +75,36 @@
             border: 2px dashed #10b981;
             z-index: 30;
             touch-action: none;
+            padding: 2px;
         }
 
-        .image-delete-btn {
+        /* පින්තූරය Lock වූ විට බෝඩරය නැති කිරීමට */
+        .dropped-image.locked {
+            border: 1px solid transparent;
+            cursor: pointer;
+        }
+
+        .dropped-image.locked:hover {
+            border: 1px dashed #2563eb;
+        }
+
+        /* පාලක බොත්තම් (Delete, Confirm, Resize) */
+        .image-btn-container {
             position: absolute;
-            top: -10px; right: -10px;
-            background: #ef4444; color: white;
-            border-radius: 50%; width: 22px; height: 22px;
-            font-size: 12px; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; z-index: 32; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            top: -28px; left: 0;
+            display: flex; gap: 6px;
+            z-index: 35;
         }
 
-        /* පින්තූරය ලොකු කුඩා කරන Handle එක */
+        .img-action-btn {
+            width: 24px; height: 24px;
+            font-size: 14px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; border-radius: 4px; color: white; font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .img-delete { background: #ef4444; }
+        .img-confirm { background: #10b981; }
+
         .image-resize-handle {
             position: absolute;
             bottom: -5px; right: -5px;
@@ -141,7 +159,7 @@
             📥 Drop Images Here to Insert into PDF (or Click to Select)
         </div>
         <div class="bg-amber-50 rounded-lg p-3 text-xs text-amber-950 font-medium flex items-center">
-            💡 <b>භාවිතය:</b> 1. <b>✏️ Eraser Mode ON</b> කර පෑනෙන් මෙන් අඳින්න (පසුබිම් පාටෙන්ම මැකී යයි). 2. පින්තූරයේ දකුණු පස පහළ ඇති <b>නිල් කොටුවෙන් ඇද</b> ලොකු/කුඩා (Resize) කරන්න.
+            💡 <b>පින්තූර භාවිතය:</b> පින්තූරය තබා කොළ පාට <b>✓ ලකුණ</b> ඔබන්න. නැවත වෙනස් කිරීමට පින්තූරය මත <b>Click</b> කරන්න.
         </div>
     </div>
 
@@ -224,7 +242,6 @@
             if (isEraseModeActive) {
                 eraseToggleBtn.innerText = "✏️ Pencil Eraser: ON";
                 eraseToggleBtn.className = "bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition shadow-md animate-pulse";
-                // පැන්සල වැඩ කිරීමට Text layer එක පසුපසට යවයි
                 textLayerDiv.style.zIndex = '5';
             } else {
                 eraseToggleBtn.innerText = "✏️ Pencil Eraser: OFF";
@@ -436,7 +453,7 @@
             window.addEventListener('touchend', stopDrawing);
         }
 
-        // --- 📥 Photo Drop & Resize Logic ---
+        // --- 📥 Photo Drop, Lock & Unlock Logic ---
         dropZone.addEventListener('click', () => imageUpload.click());
         addImageBtn.addEventListener('click', () => imageUpload.click());
 
@@ -467,7 +484,7 @@
             wrapper.id = imgId;
             wrapper.style.left = `${x}px`;
             wrapper.style.top = `${y}px`;
-            wrapper.style.width = '120px'; // Default Size
+            wrapper.style.width = '120px'; 
             wrapper.style.height = '120px';
 
             const img = document.createElement('img');
@@ -476,23 +493,37 @@
             img.style.pointerEvents = 'none';
             wrapper.appendChild(img);
 
+            // බටන් කන්ටේනරය
+            const btnContainer = document.createElement('div');
+            btnContainer.className = 'image-btn-container';
+
+            // රතු කුඩා බටන් එක (Delete)
             const deleteBtn = document.createElement('div');
-            deleteBtn.className = 'image-delete-btn';
+            deleteBtn.className = 'img-action-btn img-delete';
             deleteBtn.innerText = '×';
-            deleteBtn.onclick = () => {
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
                 wrapper.remove();
                 imageEdits = imageEdits.filter(i => i.id !== imgId);
             };
-            wrapper.appendChild(deleteBtn);
 
-            // Resize Handle එක එකතු කිරීම
+            // කොළ පාට හරි ලකුණ (Confirm / Lock Button)
+            const confirmBtn = document.createElement('div');
+            confirmBtn.className = 'img-action-btn img-confirm';
+            confirmBtn.innerText = '✓';
+            
+            btnContainer.appendChild(confirmBtn);
+            btnContainer.appendChild(deleteBtn);
+            wrapper.appendChild(btnContainer);
+
+            // Resize Handle
             const resizeHandle = document.createElement('div');
             resizeHandle.className = 'image-resize-handle';
             wrapper.appendChild(resizeHandle);
             
             pageWrapper.appendChild(wrapper);
 
-            const currentEdit = {
+            let currentEdit = {
                 id: imgId,
                 x: x / pdfScale,
                 y: originalPageHeight - ((y + 120) / pdfScale),
@@ -502,8 +533,25 @@
             };
             imageEdits.push(currentEdit);
 
-            // Drag & Resize සක්‍රීය කිරීම
-            setupDragAndResize(wrapper, resizeHandle, (nl, nt, nw, nh) => {
+            // හරි ලකුණ එබූ විට පින්තූරය Lock කිරීමේ ක්‍රියාවලිය
+            confirmBtn.onclick = (e) => {
+                e.stopPropagation();
+                wrapper.classList.add('locked');
+                btnContainer.style.display = 'none';
+                resizeHandle.style.display = 'none';
+            };
+
+            // Lock වූ පින්තූරයක් මත Click කළ විට නැවත Unlock කිරීම
+            wrapper.onclick = (e) => {
+                if (wrapper.classList.contains('locked')) {
+                    e.stopPropagation();
+                    wrapper.classList.remove('locked');
+                    btnContainer.style.display = 'flex';
+                    resizeHandle.style.display = 'block';
+                }
+            };
+
+            setupDragAndResize(wrapper, resizeHandle, btnContainer, (nl, nt, nw, nh) => {
                 currentEdit.x = nl / pdfScale;
                 currentEdit.y = originalPageHeight - ((nt + nh) / pdfScale);
                 currentEdit.w = nw / pdfScale;
@@ -511,10 +559,11 @@
             });
         }
 
-        function setupDragAndResize(element, handle, onUpdateCallback) {
-            // Drag කිරීමේ පාලනය
+        function setupDragAndResize(element, handle, btnContainer, onUpdateCallback) {
+            // Drag කිරීම
             element.addEventListener('mousedown', (e) => {
-                if (e.target === handle || e.target.classList.contains('image-delete-btn')) return;
+                if (element.classList.contains('locked')) return; // Lock නම් Drag කරන්න බැහැ
+                if (e.target === handle || e.target.classList.contains('img-action-btn')) return;
                 let startX = e.clientX, startY = e.clientY;
 
                 const moveHandler = (ev) => {
@@ -528,17 +577,16 @@
                 document.addEventListener('mousemove', moveHandler); document.addEventListener('mouseup', endHandler);
             });
 
-            // Resize කිරීමේ පාලනය (ලොකු කුඩා කිරීම)
+            // Resize කිරීම
             handle.addEventListener('mousedown', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
+                e.stopPropagation(); e.preventDefault();
                 let startX = e.clientX, startY = e.clientY;
                 let startW = element.offsetWidth, startH = element.offsetHeight;
 
                 const resizeMoveHandler = (ev) => {
                     let nw = startW + (ev.clientX - startX);
                     let nh = startH + (ev.clientY - startY);
-                    if (nw > 20 && nh > 20) {
+                    if (nw > 30 && nh > 30) {
                         element.style.width = nw + 'px';
                         element.style.height = nh + 'px';
                         onUpdateCallback(element.offsetLeft, element.offsetTop, nw, nh);
@@ -548,9 +596,10 @@
                 document.addEventListener('mousemove', resizeMoveHandler); document.addEventListener('mouseup', resizeEndHandler);
             });
 
-            // Touch (Mobile) සපෝට් එක
+            // Mobile (Touch) සපෝට් එක
             element.addEventListener('touchstart', (e) => {
-                if (e.target === handle || e.target.classList.contains('image-delete-btn')) return;
+                if (element.classList.contains('locked')) return;
+                if (e.target === handle || e.target.classList.contains('img-action-btn')) return;
                 let startX = e.touches[0].clientX, startY = e.touches[0].clientY;
                 const touchMove = (ev) => {
                     let dx = ev.touches[0].clientX - startX, dy = ev.touches[0].clientY - startY;
@@ -570,7 +619,7 @@
                 const touchResizeMove = (ev) => {
                     let nw = startW + (ev.touches[0].clientX - startX);
                     let nh = startH + (ev.touches[0].clientY - startY);
-                    if (nw > 20 && nh > 20) {
+                    if (nw > 30 && nh > 30) {
                         element.style.width = nw + 'px'; element.style.height = nh + 'px';
                         onUpdateCallback(element.offsetLeft, element.offsetTop, nw, nh);
                     }
@@ -662,3 +711,4 @@
     </script>
 </body>
 </html>
+
