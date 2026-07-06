@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium Seamless PDF Editor - 100% Font & Viewport Fix</title>
+    <title>CV & Resume Precision PDF Editor</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     
-    <!-- Core PDF Libraries -->
+    <!-- PDF Core Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     
@@ -15,13 +15,13 @@
         body { 
             background-color: #0f172a; 
             color: #f8fafc;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             user-select: none;
             margin: 0;
             padding: 0;
         }
         
-        /* Fixed Viewport System - Shows Entire PDF Page properly without cutting off half */
+        /* Full Layout Fix - Shows entire CV without cutting off background columns */
         .workspace-scroll-container {
             width: 100%;
             height: calc(100vh - 180px);
@@ -29,14 +29,13 @@
             display: block;
             padding: 40px 20px;
             background: #1e293b;
-            box-shadow: inset 0 4px 20px rgb(0 0 0 / 0.3);
             box-sizing: border-box;
         }
 
         #viewer-container {
             position: relative;
             background: white;
-            box-shadow: 0 25px 60px -15px rgb(0 0 0 / 0.7);
+            box-shadow: 0 25px 60px -15px rgb(0 0 0 / 0.6);
             margin: 0 auto;
             display: block;
             border-radius: 4px;
@@ -55,7 +54,6 @@
             z-index: 20;
         }
 
-        /* Fully Transparent Interactive Text Triggers */
         .text-layer span {
             color: transparent;
             position: absolute;
@@ -66,40 +64,37 @@
         }
 
         .text-layer span:hover {
-            background: rgba(59, 130, 246, 0.2);
-            outline: 2px solid #3b82f6;
-            border-radius: 2px;
+            background: rgba(59, 130, 246, 0.15);
+            outline: 1px dashed #3b82f6;
         }
 
-        /* Seamless Input Box matching standard typography layouts */
+        /* CV Font Matcher Input Box - Uses exact Arial/Helvetica definitions */
         .editable-input {
             position: absolute;
-            border: 2px solid #3b82f6;
+            border: 1px solid #3b82f6;
             outline: none;
             z-index: 50;
             padding: 0;
             margin: 0;
-            font-family: inherit;
-            border-radius: 2px;
-            box-shadow: 0 10px 25px rgb(0 0 0 / 0.3);
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+            letter-spacing: normal;
+            word-spacing: normal;
+            background: transparent;
         }
 
-        /* Advanced Image Handling Overlays */
+        /* Image Drag, Drop and Resize Components */
         .dropped-image {
             position: absolute;
             cursor: move;
             border: 2px dashed #10b981;
             z-index: 40;
-            padding: 4px;
-            background: rgba(16, 185, 129, 0.05);
-            touch-action: none;
+            padding: 2px;
             box-sizing: border-box;
         }
 
         .dropped-image.locked {
             border: 2px solid transparent;
             background: transparent;
-            cursor: pointer;
         }
 
         .dropped-image.locked:hover {
@@ -108,30 +103,28 @@
 
         .image-btn-container {
             position: absolute;
-            top: -38px; left: 0;
-            display: flex; gap: 6px;
+            top: -35px; left: 0;
+            display: flex; gap: 4px;
             z-index: 45;
         }
 
         .img-action-btn {
-            width: 28px; height: 28px;
-            font-size: 14px; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; border-radius: 6px; color: white; font-weight: bold;
-            box-shadow: 0 4px 6px rgb(0 0 0 / 0.2);
+            width: 26px; height: 26px;
+            font-size: 13px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; border-radius: 4px; color: white; font-weight: bold;
         }
         .img-delete { background: #ef4444; }
         .img-confirm { background: #10b981; }
 
         .image-resize-handle {
             position: absolute;
-            bottom: -8px; right: -8px;
-            width: 16px; height: 16px;
+            bottom: -6px; right: -6px;
+            width: 14px; height: 14px;
             background: #3b82f6;
             border: 2px solid white;
             cursor: se-resize;
             z-index: 46;
             border-radius: 50%;
-            box-shadow: 0 4px 10px rgb(0 0 0 / 0.3);
         }
 
         #drop-zone {
@@ -147,53 +140,52 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <!-- Top Navigation Toolbar -->
+    <!-- Header Tools Dashboard -->
     <div class="bg-slate-900 border-b border-slate-800 p-4 shadow-xl flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-3">
-            <span class="text-xl font-black tracking-wider bg-gradient-to-r from-blue-400 via-indigo-400 to-teal-400 bg-clip-text text-transparent">PREMIUM PDF PRO</span>
+            <span class="text-lg font-black tracking-wider bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">CV PRECISION EDITOR</span>
         </div>
         
         <div class="flex items-center gap-4 flex-wrap">
-            <input type="file" id="pdf-upload" accept=".pdf" class="text-sm text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer transition shadow-md"/>
+            <input type="file" id="pdf-upload" accept=".pdf" class="text-sm text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer transition"/>
             
-            <!-- Dynamic File Name Input -->
             <div class="flex items-center bg-slate-950 rounded-md px-3 py-2 border border-slate-800">
-                <span class="text-xs text-slate-500 mr-2 font-mono">NAME:</span>
-                <input type="text" id="pdf-filename" value="premium_output" placeholder="ගොනුවේ නම" class="bg-transparent text-sm font-bold outline-none text-slate-200 w-44 border-none p-0 focus:ring-0" />
-                <span class="text-xs text-slate-500 font-mono">.pdf</span>
+                <span class="text-xs text-slate-500 mr-2">NAME:</span>
+                <input type="text" id="pdf-filename" value="edited_resume" class="bg-transparent text-sm font-bold outline-none text-slate-200 w-40 p-0 border-none focus:ring-0" />
+                <span class="text-xs text-slate-500">.pdf</span>
             </div>
 
             <input type="file" id="image-upload" accept="image/*" class="hidden" />
-            <button id="add-image-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-md text-sm font-semibold transition border border-slate-700 disabled:opacity-40" disabled>
-                📷 Add Image
+            <button id="add-image-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-md text-sm font-semibold border border-slate-700 disabled:opacity-40" disabled>
+                📷 Add Profile Photo
             </button>
 
-            <button id="erase-toggle-btn" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition disabled:opacity-40" disabled>
+            <button id="erase-toggle-btn" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md text-sm font-semibold disabled:opacity-40" disabled>
                 ✏️ Eraser: OFF
             </button>
             
-            <button id="download-btn" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-6 py-2 rounded-md text-sm font-black tracking-wide transition shadow-lg disabled:opacity-40" disabled>
-                🚀 Download Premium PDF
+            <button id="download-btn" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-6 py-2 rounded-md text-sm font-black transition disabled:opacity-40" disabled>
+                🚀 Download PDF
             </button>
         </div>
     </div>
 
-    <!-- Drag & Drop Control Center -->
-    <div class="p-3 bg-slate-950/40 border-b border-slate-900">
-        <div id="drop-zone" class="p-3 text-center rounded-xl text-xs font-semibold text-slate-400 flex items-center justify-center cursor-pointer shadow-inner">
-            📥 Drop Images Here to Insert / පින්තූර මෙතැනට ඇද දමන්න (Or Click to Select)
+    <!-- Drag & Drop Zone -->
+    <div class="p-2 bg-slate-950/40 border-b border-slate-900">
+        <div id="drop-zone" class="p-3 text-center rounded-xl text-xs font-semibold text-slate-400 flex items-center justify-center cursor-pointer">
+            📥 Drop Profile Image Here to Insert (Or Click to Select) / ප්‍රොෆයිල් ෆොටෝ එක මෙතනට ඇදලා දාන්න
         </div>
     </div>
 
-    <!-- Core Interactive Studio Canvas -->
+    <!-- Studio Workspace Canvas -->
     <div class="flex-1 w-full flex justify-center items-start">
         <div id="editor-workspace" class="w-full flex justify-center">
-            <div id="placeholder" class="text-center mt-20 p-12 border-2 border-dashed border-slate-800 bg-slate-900/50 rounded-3xl max-w-sm w-full shadow-2xl">
+            <div id="placeholder" class="text-center mt-20 p-12 border-2 border-dashed border-slate-800 bg-slate-900/50 rounded-3xl max-w-sm w-full">
                 <div class="text-4xl mb-4">📄</div>
-                <p class="text-slate-400 text-sm font-bold tracking-wide">කරුණාකර සංස්කරණය සඳහා PDF එකක් තෝරන්න</p>
+                <p class="text-slate-400 text-sm font-bold">සංස්කරණය සඳහා ඔබේ CV (PDF) එක තෝරන්න.</p>
             </div>
             
-            <!-- Fixed Layout Wrapper preventing 50% cutoff -->
+            <!-- Fixed Scrolling Canvas -->
             <div id="scroll-box" class="workspace-scroll-container hidden">
                 <div id="viewer-container">
                     <div class="pdf-page-wrapper" id="page-wrapper">
@@ -209,7 +201,7 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
         let originalBytes = null;
-        let pdfScale = 1.5; // High resolution rendering scale for pixel perfection
+        let pdfScale = 1.5; // High resolution rendering scale
         let originalPageWidth = 0;
         let originalPageHeight = 0;
 
@@ -240,7 +232,7 @@
             if (!file) return;
 
             const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-            pdfFilenameInput.value = nameWithoutExt + "_premium";
+            pdfFilenameInput.value = nameWithoutExt + "_fixed";
 
             const reader = new FileReader();
             reader.onload = async function() {
@@ -293,7 +285,6 @@
             textLayerDiv.innerHTML = '';
             setupCanvasEraser(); 
 
-            // Font Vector Trace Logic Integration
             const textContent = await page.getTextContent();
             let idx = 0;
             textContent.items.forEach((item) => {
@@ -313,9 +304,8 @@
                 span.style.width = `${item.width * pdfScale}px`;
                 span.style.height = `${item.height * pdfScale}px`;
                 
-                // Track Font Specifications natively
-                span.style.fontFamily = 'inherit';
-                const isFontBold = item.fontName.toLowerCase().includes('bold') || item.fontName.toLowerCase().includes('black');
+                // Track internal Font details dynamically 
+                const isFontBold = item.fontName.toLowerCase().includes('bold') || item.fontName.toLowerCase().includes('black') || item.fontName.toLowerCase().includes('w700');
 
                 span.addEventListener('click', (e) => {
                     if (isEraseModeActive) return;
@@ -367,12 +357,13 @@
             
             input.style.left = `${leftPos}px`;
             input.style.top = `${topPos}px`;
+            // Math corrections to sync pixel sizes
             input.style.fontSize = `${item.height * pdfScale}px`;
-            input.style.width = `${(item.width * pdfScale) + 100}px`;
-            input.style.height = `${item.height * pdfScale * 1.2}px`;
+            input.style.width = `${(item.width * pdfScale) + 120}px`;
+            input.style.height = `${item.height * pdfScale * 1.15}px`;
             input.style.backgroundColor = bgRGB;
             input.style.color = textRGB;
-            if (isFontBold) input.style.fontWeight = 'bold';
+            if (isFontBold) input.style.fontWeight = '700';
 
             pageWrapper.appendChild(input);
             input.focus();
@@ -394,13 +385,13 @@
                     textColor: { r: textR/255, g: textG/255, b: textB/255 }
                 };
                 
-                // Solid Fill Background Erasure Masking
+                // Hide the old text completely using background mask color
                 ctx.fillStyle = bgRGB;
-                ctx.fillRect(leftPos - 2, topPos - 2, (item.width * pdfScale) + 105, item.height * pdfScale * 1.3);
+                ctx.fillRect(leftPos - 1, topPos - 2, (item.width * pdfScale) + 125, item.height * pdfScale * 1.25);
                 
-                // Trace on browser preview using exact canvas specifications
+                // Render the new text using identical Arial/Helvetica typographic families
                 ctx.fillStyle = textRGB;
-                ctx.font = `${isFontBold ? 'bold ' : ''}${item.height * pdfScale}px sans-serif`;
+                ctx.font = `${isFontBold ? '700 ' : ''}${item.height * pdfScale}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
                 ctx.fillText(userValue, leftPos, topPos + (item.height * pdfScale * 0.85));
                 
                 input.remove();
@@ -455,7 +446,7 @@
             window.addEventListener('mouseup', stopDrawing);
         }
 
-        // Image Management (Drag, Drop, Resize Fixed)
+        // Image Engine
         dropZone.addEventListener('click', () => imageUpload.click());
         addImageBtn.addEventListener('click', () => imageUpload.click());
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -480,10 +471,10 @@
             const wrapper = document.createElement('div');
             wrapper.className = 'dropped-image';
             wrapper.id = imgId;
-            wrapper.style.left = '80px';
-            wrapper.style.top = '80px';
-            wrapper.style.width = '140px'; 
-            wrapper.style.height = '140px';
+            wrapper.style.left = '60px';
+            wrapper.style.top = '60px';
+            wrapper.style.width = '130px'; 
+            wrapper.style.height = '130px';
 
             const img = document.createElement('img');
             img.src = base64Src;
@@ -512,10 +503,10 @@
 
             let imageTrackingObj = {
                 id: imgId,
-                x: 80 / pdfScale,
-                y: originalPageHeight - ((80 + 140) / pdfScale),
-                w: 140 / pdfScale,
-                h: 140 / pdfScale,
+                x: 60 / pdfScale,
+                y: originalPageHeight - ((60 + 130) / pdfScale),
+                w: 130 / pdfScale,
+                h: 130 / pdfScale,
                 src: base64Src
             };
             imageEdits.push(imageTrackingObj);
@@ -567,7 +558,7 @@
                 const onMouseMoveResize = (ev) => {
                     let currentWidth = startW + (ev.clientX - startX);
                     let currentHeight = startH + (ev.clientY - startY);
-                    if (currentWidth > 30 && currentHeight > 30) {
+                    if (currentWidth > 25 && currentHeight > 25) {
                         element.style.width = currentWidth + 'px';
                         element.style.height = currentHeight + 'px';
                         onUpdate(element.offsetLeft, element.offsetTop, currentWidth, currentHeight);
@@ -586,7 +577,7 @@
             return uint8Array.buffer;
         }
 
-        // Compilation engine mapping fonts directly on the compiled data stream
+        // Compilation Downloader Mapping Fonts to exact CV typography standards
         downloadBtn.addEventListener('click', async () => {
             if (!originalBytes) return;
             try {
@@ -594,11 +585,11 @@
                 const pdfDocInstance = await PDFDocument.load(originalBytes);
                 const firstPage = pdfDocInstance.getPages()[0];
                 
-                // Embedded Vector Grade Typography Map
-                const helveticaFont = await pdfDocInstance.embedFont(StandardFonts.Helvetica);
-                const helveticaBoldFont = await pdfDocInstance.embedFont(StandardFonts.HelveticaBold);
+                // Set the Vector Font Engine to Helvetica/Arial mapping
+                const cvFont = await pdfDocInstance.embedFont(StandardFonts.Helvetica);
+                const cvFontBold = await pdfDocInstance.embedFont(StandardFonts.HelveticaBold);
 
-                // 1. Process Erasures
+                // 1. Apply Erasures
                 eraseDrawings.forEach(stroke => {
                     for (let i = 0; i < stroke.points.length - 1; i++) {
                         firstPage.drawLine({
@@ -610,7 +601,7 @@
                     }
                 });
 
-                // 2. High-Fidelity Font Replication Output
+                // 2. Export Texts with perfect font consistency
                 Object.values(textEdits).forEach(edit => {
                     firstPage.drawRectangle({
                         x: edit.x - 1, y: edit.y - 1,
@@ -621,13 +612,13 @@
                         firstPage.drawText(edit.newText, {
                             x: edit.x, y: edit.y + (edit.fontSize * 0.05),
                             size: edit.fontSize,
-                            font: edit.isBold ? helveticaBoldFont : helveticaFont,
+                            font: edit.isBold ? cvFontBold : cvFont,
                             color: rgb(edit.textColor.r, edit.textColor.g, edit.textColor.b),
                         });
                     }
                 });
 
-                // 3. Process Images
+                // 3. Render Images
                 for (const imgEdit of imageEdits) {
                     const buffer = base64ToArrayBuffer(imgEdit.src);
                     const embeddedImage = imgEdit.src.includes('image/png') ? 
@@ -643,7 +634,7 @@
                 const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
                 
                 let filename = pdfFilenameInput.value.trim();
-                if(!filename) filename = "premium_edited_document";
+                if(!filename) filename = "edited_resume_output";
                 if(!filename.endsWith(".pdf")) filename += ".pdf";
 
                 const link = document.createElement('a');
@@ -651,7 +642,7 @@
                 link.download = filename;
                 link.click();
             } catch (err) {
-                alert("PDF ගොනුව සකස් කිරීමේදී දෝෂයක් ඇතිවිය.");
+                alert("PDF එක සකස් කිරීමේදී ගැටලුවක් මතු විය.");
             }
         });
     </script>
