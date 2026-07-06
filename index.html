@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CV & Resume Precision PDF Editor</title>
+    <title>CV Precision PDF Editor - Ultimate Fixed Edition</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     
@@ -21,7 +21,7 @@
             padding: 0;
         }
         
-        /* Full Layout Fix - Shows entire CV without cutting off background columns */
+        /* Full Viewport Layout Fix */
         .workspace-scroll-container {
             width: 100%;
             height: calc(100vh - 180px);
@@ -68,7 +68,7 @@
             outline: 1px dashed #3b82f6;
         }
 
-        /* CV Font Matcher Input Box - Uses exact Arial/Helvetica definitions */
+        /* Seamless Input Box matching precise CV dimensions */
         .editable-input {
             position: absolute;
             border: 1px solid #3b82f6;
@@ -79,10 +79,9 @@
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
             letter-spacing: normal;
             word-spacing: normal;
-            background: transparent;
         }
 
-        /* Image Drag, Drop and Resize Components */
+        /* Image Drag, Drop and Resize Layering */
         .dropped-image {
             position: absolute;
             cursor: move;
@@ -140,10 +139,10 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <!-- Header Tools Dashboard -->
+    <!-- Top Action Toolbar -->
     <div class="bg-slate-900 border-b border-slate-800 p-4 shadow-xl flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-3">
-            <span class="text-lg font-black tracking-wider bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">CV PRECISION EDITOR</span>
+            <span class="text-lg font-black tracking-wider bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">CV PRECISION EDITOR v3</span>
         </div>
         
         <div class="flex items-center gap-4 flex-wrap">
@@ -151,7 +150,7 @@
             
             <div class="flex items-center bg-slate-950 rounded-md px-3 py-2 border border-slate-800">
                 <span class="text-xs text-slate-500 mr-2">NAME:</span>
-                <input type="text" id="pdf-filename" value="edited_resume" class="bg-transparent text-sm font-bold outline-none text-slate-200 w-40 p-0 border-none focus:ring-0" />
+                <input type="text" id="pdf-filename" value="fixed_resume" class="bg-transparent text-sm font-bold outline-none text-slate-200 w-40 p-0 border-none focus:ring-0" />
                 <span class="text-xs text-slate-500">.pdf</span>
             </div>
 
@@ -170,14 +169,14 @@
         </div>
     </div>
 
-    <!-- Drag & Drop Zone -->
+    <!-- Drag & Drop Control Center -->
     <div class="p-2 bg-slate-950/40 border-b border-slate-900">
         <div id="drop-zone" class="p-3 text-center rounded-xl text-xs font-semibold text-slate-400 flex items-center justify-center cursor-pointer">
             📥 Drop Profile Image Here to Insert (Or Click to Select) / ප්‍රොෆයිල් ෆොටෝ එක මෙතනට ඇදලා දාන්න
         </div>
     </div>
 
-    <!-- Studio Workspace Canvas -->
+    <!-- Main Workspace Studio -->
     <div class="flex-1 w-full flex justify-center items-start">
         <div id="editor-workspace" class="w-full flex justify-center">
             <div id="placeholder" class="text-center mt-20 p-12 border-2 border-dashed border-slate-800 bg-slate-900/50 rounded-3xl max-w-sm w-full">
@@ -185,7 +184,6 @@
                 <p class="text-slate-400 text-sm font-bold">සංස්කරණය සඳහා ඔබේ CV (PDF) එක තෝරන්න.</p>
             </div>
             
-            <!-- Fixed Scrolling Canvas -->
             <div id="scroll-box" class="workspace-scroll-container hidden">
                 <div id="viewer-container">
                     <div class="pdf-page-wrapper" id="page-wrapper">
@@ -201,7 +199,7 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
         let originalBytes = null;
-        let pdfScale = 1.5; // High resolution rendering scale
+        let pdfScale = 1.5; 
         let originalPageWidth = 0;
         let originalPageHeight = 0;
 
@@ -232,7 +230,7 @@
             if (!file) return;
 
             const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-            pdfFilenameInput.value = nameWithoutExt + "_fixed";
+            pdfFilenameInput.value = nameWithoutExt + "_fixed_final";
 
             const reader = new FileReader();
             reader.onload = async function() {
@@ -304,8 +302,7 @@
                 span.style.width = `${item.width * pdfScale}px`;
                 span.style.height = `${item.height * pdfScale}px`;
                 
-                // Track internal Font details dynamically 
-                const isFontBold = item.fontName.toLowerCase().includes('bold') || item.fontName.toLowerCase().includes('black') || item.fontName.toLowerCase().includes('w700');
+                let isFontBold = item.fontName.toLowerCase().includes('bold') || item.fontName.toLowerCase().includes('black') || item.fontName.toLowerCase().includes('w700');
 
                 span.addEventListener('click', (e) => {
                     if (isEraseModeActive) return;
@@ -357,42 +354,59 @@
             
             input.style.left = `${leftPos}px`;
             input.style.top = `${topPos}px`;
-            // Math corrections to sync pixel sizes
             input.style.fontSize = `${item.height * pdfScale}px`;
-            input.style.width = `${(item.width * pdfScale) + 120}px`;
-            input.style.height = `${item.height * pdfScale * 1.15}px`;
+            input.style.width = `${(item.width * pdfScale) + 140}px`;
+            input.style.height = `${item.height * pdfScale * 1.2}px`;
             input.style.backgroundColor = bgRGB;
             input.style.color = textRGB;
-            if (isFontBold) input.style.fontWeight = '700';
+            
+            // Realtime dynamic check for WhatsApp star system inside browser view
+            const checkAndApplyWeight = (val) => {
+                if (isFontBold || (val.startsWith('*') && val.endsWith('*') && val.length > 1)) {
+                    input.style.fontWeight = '700';
+                } else {
+                    input.style.fontWeight = 'normal';
+                }
+            };
+            checkAndApplyWeight(currentActiveText);
+            input.addEventListener('input', () => checkAndApplyWeight(input.value));
 
             pageWrapper.appendChild(input);
             input.focus();
             input.select();
 
             const saveEdits = () => {
-                let userValue = input.value;
+                let rawVal = input.value;
+                let cleanVal = rawVal;
+                let finalBold = isFontBold;
+
+                // WhatsApp Bold Processing Engine
+                if (rawVal.startsWith('*') && rawVal.endsWith('*') && rawVal.length > 1) {
+                    cleanVal = rawVal.substring(1, rawVal.length - 1);
+                    finalBold = true;
+                }
                 
                 textEdits[span.id] = {
                     x: leftPos / pdfScale,
                     y: originalPageHeight - (topPos / pdfScale) - item.height, 
-                    newText: userValue,
-                    rawInput: userValue,
+                    newText: cleanVal,
+                    rawInput: rawVal,
                     fontSize: item.height,
                     originalWidth: (item.width * pdfScale) / pdfScale,
                     originalHeight: item.height,
-                    isBold: isFontBold,
+                    isBold: finalBold,
                     bgColor: { r: bgPixel[0]/255, g: bgPixel[1]/255, b: bgPixel[2]/255 },
                     textColor: { r: textR/255, g: textG/255, b: textB/255 }
                 };
                 
-                // Hide the old text completely using background mask color
+                // 100% Fixed: Erases the original text underneath using solid rectangle mask mapping
                 ctx.fillStyle = bgRGB;
-                ctx.fillRect(leftPos - 1, topPos - 2, (item.width * pdfScale) + 125, item.height * pdfScale * 1.25);
+                ctx.fillRect(leftPos - 4, topPos - 4, (item.width * pdfScale) + 150, item.height * pdfScale * 1.4);
                 
-                // Render the new text using identical Arial/Helvetica typographic families
+                // Traces clean string over browser preview canvas
                 ctx.fillStyle = textRGB;
-                ctx.font = `${isFontBold ? '700 ' : ''}${item.height * pdfScale}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
-                ctx.fillText(userValue, leftPos, topPos + (item.height * pdfScale * 0.85));
+                ctx.font = `${finalBold ? '700 ' : ''}${item.height * pdfScale}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
+                ctx.fillText(cleanVal, leftPos, topPos + (item.height * pdfScale * 0.85));
                 
                 input.remove();
             };
@@ -446,7 +460,7 @@
             window.addEventListener('mouseup', stopDrawing);
         }
 
-        // Image Engine
+        // Image Drop Handling
         dropZone.addEventListener('click', () => imageUpload.click());
         addImageBtn.addEventListener('click', () => imageUpload.click());
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -577,7 +591,7 @@
             return uint8Array.buffer;
         }
 
-        // Compilation Downloader Mapping Fonts to exact CV typography standards
+        // Compiled Core Engine Export
         downloadBtn.addEventListener('click', async () => {
             if (!originalBytes) return;
             try {
@@ -585,11 +599,10 @@
                 const pdfDocInstance = await PDFDocument.load(originalBytes);
                 const firstPage = pdfDocInstance.getPages()[0];
                 
-                // Set the Vector Font Engine to Helvetica/Arial mapping
                 const cvFont = await pdfDocInstance.embedFont(StandardFonts.Helvetica);
                 const cvFontBold = await pdfDocInstance.embedFont(StandardFonts.HelveticaBold);
 
-                // 1. Apply Erasures
+                // 1. Process Eraser Strokes
                 eraseDrawings.forEach(stroke => {
                     for (let i = 0; i < stroke.points.length - 1; i++) {
                         firstPage.drawLine({
@@ -601,16 +614,22 @@
                     }
                 });
 
-                // 2. Export Texts with perfect font consistency
+                // 2. High-Fidelity Clean Text Tracing Engine
                 Object.values(textEdits).forEach(edit => {
+                    // Erase old data stream beneath on compiled layer completely
                     firstPage.drawRectangle({
-                        x: edit.x - 1, y: edit.y - 1,
-                        width: edit.originalWidth * 1.5, height: edit.originalHeight * 1.35,
+                        x: edit.x - 2,
+                        y: edit.y - 2,
+                        width: edit.originalWidth * 1.6,
+                        height: edit.originalHeight * 1.4,
                         color: rgb(edit.bgColor.r, edit.bgColor.g, edit.bgColor.b),
                     });
+                    
+                    // Render clean input safely
                     if(edit.newText.trim().length > 0) {
                         firstPage.drawText(edit.newText, {
-                            x: edit.x, y: edit.y + (edit.fontSize * 0.05),
+                            x: edit.x,
+                            y: edit.y + (edit.fontSize * 0.05),
                             size: edit.fontSize,
                             font: edit.isBold ? cvFontBold : cvFont,
                             color: rgb(edit.textColor.r, edit.textColor.g, edit.textColor.b),
@@ -618,7 +637,7 @@
                     }
                 });
 
-                // 3. Render Images
+                // 3. Process Images
                 for (const imgEdit of imageEdits) {
                     const buffer = base64ToArrayBuffer(imgEdit.src);
                     const embeddedImage = imgEdit.src.includes('image/png') ? 
@@ -634,7 +653,7 @@
                 const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
                 
                 let filename = pdfFilenameInput.value.trim();
-                if(!filename) filename = "edited_resume_output";
+                if(!filename) filename = "precision_fixed_resume";
                 if(!filename.endsWith(".pdf")) filename += ".pdf";
 
                 const link = document.createElement('a');
@@ -642,10 +661,9 @@
                 link.download = filename;
                 link.click();
             } catch (err) {
-                alert("PDF එක සකස් කිරීමේදී ගැටලුවක් මතු විය.");
+                alert("PDF එක සකස් කිරීමේදී ගැටලුවක් මතු වය.");
             }
         });
     </script>
 </body>
 </html>
-
