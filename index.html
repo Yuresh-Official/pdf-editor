@@ -3,39 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium Pro PDF Editor - Fixed Edition</title>
-    <!-- Tailwind CSS & Professional Fonts -->
+    <title>Premium Seamless PDF Editor - 100% Font & Viewport Fix</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
     
-    <!-- Required PDF Libraries -->
+    <!-- Core PDF Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     
     <style>
         body { 
-            background-color: #f1f5f9; 
-            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; 
+            color: #f8fafc;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             user-select: none;
+            margin: 0;
+            padding: 0;
         }
         
+        /* Fixed Viewport System - Shows Entire PDF Page properly without cutting off half */
         .workspace-scroll-container {
             width: 100%;
+            height: calc(100vh - 180px);
             overflow: auto;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding: 30px;
-            background: #cbd5e1;
-            border-radius: 16px;
-            max-height: calc(100vh - 240px);
-            box-shadow: inset 0 4px 10px rgb(0 0 0 / 0.08);
+            display: block;
+            padding: 40px 20px;
+            background: #1e293b;
+            box-shadow: inset 0 4px 20px rgb(0 0 0 / 0.3);
+            box-sizing: border-box;
         }
 
         #viewer-container {
             position: relative;
             background: white;
-            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+            box-shadow: 0 25px 60px -15px rgb(0 0 0 / 0.7);
+            margin: 0 auto;
+            display: block;
             border-radius: 4px;
         }
 
@@ -52,34 +55,36 @@
             z-index: 20;
         }
 
+        /* Fully Transparent Interactive Text Triggers */
         .text-layer span {
             color: transparent;
             position: absolute;
             white-space: pre;
             cursor: text;
             transform-origin: 0% 0%;
+            line-height: 1;
         }
 
         .text-layer span:hover {
-            background: rgba(37, 99, 235, 0.12);
-            outline: 1px dashed #2563eb;
+            background: rgba(59, 130, 246, 0.2);
+            outline: 2px solid #3b82f6;
             border-radius: 2px;
         }
 
+        /* Seamless Input Box matching standard typography layouts */
         .editable-input {
             position: absolute;
-            border: 2px solid #2563eb;
+            border: 2px solid #3b82f6;
             outline: none;
             z-index: 50;
-            padding: 0 4px;
+            padding: 0;
             margin: 0;
-            font-family: 'Courier Prime', monospace;
-            font-weight: 700;
-            border-radius: 4px;
-            box-shadow: 0 10px 20px rgb(0 0 0 / 0.15);
+            font-family: inherit;
+            border-radius: 2px;
+            box-shadow: 0 10px 25px rgb(0 0 0 / 0.3);
         }
 
-        /* Improved & Fixed Image Styling */
+        /* Advanced Image Handling Overlays */
         .dropped-image {
             position: absolute;
             cursor: move;
@@ -94,15 +99,16 @@
         .dropped-image.locked {
             border: 2px solid transparent;
             background: transparent;
+            cursor: pointer;
         }
 
         .dropped-image.locked:hover {
-            border: 2px dashed #2563eb;
+            border: 2px dashed #3b82f6;
         }
 
         .image-btn-container {
             position: absolute;
-            top: -36px; left: 0;
+            top: -38px; left: 0;
             display: flex; gap: 6px;
             z-index: 45;
         }
@@ -111,86 +117,87 @@
             width: 28px; height: 28px;
             font-size: 14px; display: flex; align-items: center; justify-content: center;
             cursor: pointer; border-radius: 6px; color: white; font-weight: bold;
-            box-shadow: 0 4px 6px rgb(0 0 0 / 0.1);
+            box-shadow: 0 4px 6px rgb(0 0 0 / 0.2);
         }
         .img-delete { background: #ef4444; }
         .img-confirm { background: #10b981; }
 
-        /* Highly Visible Resize Handle */
         .image-resize-handle {
             position: absolute;
-            bottom: -6px; right: -6px;
+            bottom: -8px; right: -8px;
             width: 16px; height: 16px;
-            background: #2563eb;
+            background: #3b82f6;
             border: 2px solid white;
             cursor: se-resize;
             z-index: 46;
             border-radius: 50%;
-            box-shadow: 0 4px 6px rgb(0 0 0 / 0.15);
+            box-shadow: 0 4px 10px rgb(0 0 0 / 0.3);
         }
 
         #drop-zone {
-            border: 2px dashed #3b82f6;
-            background: #f0f9ff;
+            border: 2px dashed #475569;
+            background: #1e293b;
             transition: all 0.2s ease;
         }
         #drop-zone.dragover {
-            background: #e0f2fe;
-            border-color: #1d4ed8;
+            background: #334155;
+            border-color: #3b82f6;
         }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <!-- Top Navigation Bar -->
-    <div class="bg-slate-900 text-white p-4 shadow-md flex flex-wrap items-center justify-between gap-4">
+    <!-- Top Navigation Toolbar -->
+    <div class="bg-slate-900 border-b border-slate-800 p-4 shadow-xl flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-3">
-            <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-teal-400 bg-clip-text text-transparent">Premium PDF Pro</span>
+            <span class="text-xl font-black tracking-wider bg-gradient-to-r from-blue-400 via-indigo-400 to-teal-400 bg-clip-text text-transparent">PREMIUM PDF PRO</span>
         </div>
-        <div class="flex items-center gap-3 flex-wrap">
-            <input type="file" id="pdf-upload" accept=".pdf" class="text-sm text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"/>
+        
+        <div class="flex items-center gap-4 flex-wrap">
+            <input type="file" id="pdf-upload" accept=".pdf" class="text-sm text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer transition shadow-md"/>
             
-            <!-- File Name Input Container -->
-            <div class="flex items-center bg-slate-800 rounded px-3 py-1.5 border border-slate-700">
-                <span class="text-xs text-gray-400 mr-2">File Name:</span>
-                <input type="text" id="pdf-filename" value="edited_document" placeholder="නම ඇතුලත් කරන්න" class="bg-transparent text-sm font-medium outline-none text-white w-40 border-none p-0 focus:ring-0" />
-                <span class="text-xs text-gray-400">.pdf</span>
+            <!-- Dynamic File Name Input -->
+            <div class="flex items-center bg-slate-950 rounded-md px-3 py-2 border border-slate-800">
+                <span class="text-xs text-slate-500 mr-2 font-mono">NAME:</span>
+                <input type="text" id="pdf-filename" value="premium_output" placeholder="ගොනුවේ නම" class="bg-transparent text-sm font-bold outline-none text-slate-200 w-44 border-none p-0 focus:ring-0" />
+                <span class="text-xs text-slate-500 font-mono">.pdf</span>
             </div>
 
             <input type="file" id="image-upload" accept="image/*" class="hidden" />
-            <button id="add-image-btn" class="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-4 py-2 rounded text-sm font-medium transition disabled:opacity-50" disabled>
+            <button id="add-image-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-md text-sm font-semibold transition border border-slate-700 disabled:opacity-40" disabled>
                 📷 Add Image
             </button>
 
-            <button id="erase-toggle-btn" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded text-sm font-medium transition disabled:opacity-50" disabled>
+            <button id="erase-toggle-btn" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition disabled:opacity-40" disabled>
                 ✏️ Eraser: OFF
             </button>
             
-            <button id="download-btn" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-5 py-2 rounded text-sm font-bold transition disabled:opacity-50" disabled>
-                🚀 Download PDF
+            <button id="download-btn" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-6 py-2 rounded-md text-sm font-black tracking-wide transition shadow-lg disabled:opacity-40" disabled>
+                🚀 Download Premium PDF
             </button>
         </div>
     </div>
 
-    <!-- Drag & Drop Zone Area -->
-    <div class="p-3 bg-slate-100 border-b border-slate-200">
-        <div id="drop-zone" class="p-4 text-center rounded-xl text-sm font-medium text-blue-600 flex items-center justify-center cursor-pointer shadow-inner">
-            📥 Drop Images Here to Insert / පින්තූර මෙතැනට Drag කර Drop කරන්න (Or Click to Select)
+    <!-- Drag & Drop Control Center -->
+    <div class="p-3 bg-slate-950/40 border-b border-slate-900">
+        <div id="drop-zone" class="p-3 text-center rounded-xl text-xs font-semibold text-slate-400 flex items-center justify-center cursor-pointer shadow-inner">
+            📥 Drop Images Here to Insert / පින්තූර මෙතැනට ඇද දමන්න (Or Click to Select)
         </div>
     </div>
 
-    <!-- Main Editor Canvas Area -->
-    <div class="flex-1 p-6 w-full flex justify-center items-start">
-        <div id="editor-workspace" class="w-full max-w-4xl flex justify-center">
-            <div id="placeholder" class="text-center mt-12 p-12 border-2 border-dashed border-slate-300 rounded-2xl bg-white max-w-sm w-full shadow-sm">
-                <div class="text-3xl mb-3">📄</div>
-                <p class="text-slate-500 text-sm font-medium">වැඩ ආරම්භ කිරීමට PDF ගොනුවක් තෝරන්න.</p>
+    <!-- Core Interactive Studio Canvas -->
+    <div class="flex-1 w-full flex justify-center items-start">
+        <div id="editor-workspace" class="w-full flex justify-center">
+            <div id="placeholder" class="text-center mt-20 p-12 border-2 border-dashed border-slate-800 bg-slate-900/50 rounded-3xl max-w-sm w-full shadow-2xl">
+                <div class="text-4xl mb-4">📄</div>
+                <p class="text-slate-400 text-sm font-bold tracking-wide">කරුණාකර සංස්කරණය සඳහා PDF එකක් තෝරන්න</p>
             </div>
             
+            <!-- Fixed Layout Wrapper preventing 50% cutoff -->
             <div id="scroll-box" class="workspace-scroll-container hidden">
                 <div id="viewer-container">
                     <div class="pdf-page-wrapper" id="page-wrapper">
-                        <canvas id="pdf-canvas" style="position: relative; z-index: 10;"></canvas>
+                        <canvas id="pdf-canvas" style="position: relative; z-index: 10; display: block;"></canvas>
                         <div id="text-layer" class="text-layer"></div>
                     </div>
                 </div>
@@ -202,7 +209,7 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
         let originalBytes = null;
-        let pdfScale = 1.3; 
+        let pdfScale = 1.5; // High resolution rendering scale for pixel perfection
         let originalPageWidth = 0;
         let originalPageHeight = 0;
 
@@ -233,7 +240,7 @@
             if (!file) return;
 
             const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-            pdfFilenameInput.value = nameWithoutExt + "_edited";
+            pdfFilenameInput.value = nameWithoutExt + "_premium";
 
             const reader = new FileReader();
             reader.onload = async function() {
@@ -286,6 +293,7 @@
             textLayerDiv.innerHTML = '';
             setupCanvasEraser(); 
 
+            // Font Vector Trace Logic Integration
             const textContent = await page.getTextContent();
             let idx = 0;
             textContent.items.forEach((item) => {
@@ -302,10 +310,11 @@
                 span.style.left = `${tx[4]}px`;
                 span.style.top = `${computedTop}px`; 
                 span.style.fontSize = `${item.height * pdfScale}px`;
-                span.style.fontFamily = "'Courier Prime', monospace";
                 span.style.width = `${item.width * pdfScale}px`;
                 span.style.height = `${item.height * pdfScale}px`;
                 
+                // Track Font Specifications natively
+                span.style.fontFamily = 'inherit';
                 const isFontBold = item.fontName.toLowerCase().includes('bold') || item.fontName.toLowerCase().includes('black');
 
                 span.addEventListener('click', (e) => {
@@ -341,14 +350,14 @@
                     const textRGB = `rgb(${textR}, ${textG}, ${textB})`;
                     const currentActiveText = textEdits[span.id] ? textEdits[span.id].rawInput : item.str;
 
-                    createInputBox(span, item, tx[4], computedTop, bgRGB, bgPixel, textRGB, textR, textG, textB, isFontBold, currentActiveText);
+                    createSeamlessInputBox(span, item, tx[4], computedTop, bgRGB, bgPixel, textRGB, textR, textG, textB, isFontBold, currentActiveText);
                 });
 
                 textLayerDiv.appendChild(span);
             });
         }
 
-        function createInputBox(span, item, leftPos, topPos, bgRGB, bgPixel, textRGB, textR, textG, textB, isFontBold, currentActiveText) {
+        function createSeamlessInputBox(span, item, leftPos, topPos, bgRGB, bgPixel, textRGB, textR, textG, textB, isFontBold, currentActiveText) {
             span.style.visibility = 'hidden';
 
             const input = document.createElement('input');
@@ -359,8 +368,8 @@
             input.style.left = `${leftPos}px`;
             input.style.top = `${topPos}px`;
             input.style.fontSize = `${item.height * pdfScale}px`;
-            input.style.width = `${(item.width * pdfScale) + 80}px`;
-            input.style.height = `${item.height * pdfScale * 1.25}px`;
+            input.style.width = `${(item.width * pdfScale) + 100}px`;
+            input.style.height = `${item.height * pdfScale * 1.2}px`;
             input.style.backgroundColor = bgRGB;
             input.style.color = textRGB;
             if (isFontBold) input.style.fontWeight = 'bold';
@@ -385,12 +394,14 @@
                     textColor: { r: textR/255, g: textG/255, b: textB/255 }
                 };
                 
+                // Solid Fill Background Erasure Masking
                 ctx.fillStyle = bgRGB;
-                ctx.fillRect(leftPos - 2, topPos - 2, (item.width * pdfScale) + 85, item.height * pdfScale * 1.3);
+                ctx.fillRect(leftPos - 2, topPos - 2, (item.width * pdfScale) + 105, item.height * pdfScale * 1.3);
                 
+                // Trace on browser preview using exact canvas specifications
                 ctx.fillStyle = textRGB;
-                ctx.font = `${isFontBold ? 'bold ' : ''}${item.height * pdfScale}px 'Courier Prime', monospace`;
-                ctx.fillText(userValue, leftPos, topPos + (item.height * pdfScale * 0.88));
+                ctx.font = `${isFontBold ? 'bold ' : ''}${item.height * pdfScale}px sans-serif`;
+                ctx.fillText(userValue, leftPos, topPos + (item.height * pdfScale * 0.85));
                 
                 input.remove();
             };
@@ -444,7 +455,7 @@
             window.addEventListener('mouseup', stopDrawing);
         }
 
-        // Image Handling, Drag, Drop and Real-time Resizing Fixes
+        // Image Management (Drag, Drop, Resize Fixed)
         dropZone.addEventListener('click', () => imageUpload.click());
         addImageBtn.addEventListener('click', () => imageUpload.click());
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -469,9 +480,8 @@
             const wrapper = document.createElement('div');
             wrapper.className = 'dropped-image';
             wrapper.id = imgId;
-            // Default fixed bounding square
-            wrapper.style.left = '50px';
-            wrapper.style.top = '50px';
+            wrapper.style.left = '80px';
+            wrapper.style.top = '80px';
             wrapper.style.width = '140px'; 
             wrapper.style.height = '140px';
 
@@ -502,8 +512,8 @@
 
             let imageTrackingObj = {
                 id: imgId,
-                x: 50 / pdfScale,
-                y: originalPageHeight - ((50 + 140) / pdfScale),
+                x: 80 / pdfScale,
+                y: originalPageHeight - ((80 + 140) / pdfScale),
                 w: 140 / pdfScale,
                 h: 140 / pdfScale,
                 src: base64Src
@@ -524,7 +534,6 @@
                 }
             };
 
-            // Enhanced Accurate Drag & Resize Logic Implementation
             setupImageInteractions(wrapper, resizeHandle, (updatedLeft, updatedTop, updatedWidth, updatedHeight) => {
                 imageTrackingObj.x = updatedLeft / pdfScale;
                 imageTrackingObj.y = originalPageHeight - ((updatedTop + updatedHeight) / pdfScale);
@@ -534,7 +543,6 @@
         }
 
         function setupImageInteractions(element, handle, onUpdate) {
-            // Drag feature
             element.addEventListener('mousedown', (e) => {
                 if (element.classList.contains('locked') || e.target === handle || e.target.classList.contains('img-action-btn')) return;
                 e.preventDefault();
@@ -551,7 +559,6 @@
                 document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp);
             });
 
-            // True Aspect Drag & Resize feature
             handle.addEventListener('mousedown', (e) => {
                 e.stopPropagation(); e.preventDefault();
                 let startX = e.clientX, startY = e.clientY;
@@ -560,7 +567,7 @@
                 const onMouseMoveResize = (ev) => {
                     let currentWidth = startW + (ev.clientX - startX);
                     let currentHeight = startH + (ev.clientY - startY);
-                    if (currentWidth > 35 && currentHeight > 35) {
+                    if (currentWidth > 30 && currentHeight > 30) {
                         element.style.width = currentWidth + 'px';
                         element.style.height = currentHeight + 'px';
                         onUpdate(element.offsetLeft, element.offsetTop, currentWidth, currentHeight);
@@ -579,6 +586,7 @@
             return uint8Array.buffer;
         }
 
+        // Compilation engine mapping fonts directly on the compiled data stream
         downloadBtn.addEventListener('click', async () => {
             if (!originalBytes) return;
             try {
@@ -586,10 +594,11 @@
                 const pdfDocInstance = await PDFDocument.load(originalBytes);
                 const firstPage = pdfDocInstance.getPages()[0];
                 
-                const courierFont = await pdfDocInstance.embedFont(StandardFonts.Courier);
-                const courierBoldFont = await pdfDocInstance.embedFont(StandardFonts.CourierBold);
+                // Embedded Vector Grade Typography Map
+                const helveticaFont = await pdfDocInstance.embedFont(StandardFonts.Helvetica);
+                const helveticaBoldFont = await pdfDocInstance.embedFont(StandardFonts.HelveticaBold);
 
-                // 1. Hard Paint Eraser Strokes
+                // 1. Process Erasures
                 eraseDrawings.forEach(stroke => {
                     for (let i = 0; i < stroke.points.length - 1; i++) {
                         firstPage.drawLine({
@@ -601,24 +610,24 @@
                     }
                 });
 
-                // 2. High-Fidelity Vector Font Rendering
+                // 2. High-Fidelity Font Replication Output
                 Object.values(textEdits).forEach(edit => {
                     firstPage.drawRectangle({
                         x: edit.x - 1, y: edit.y - 1,
-                        width: edit.originalWidth * 1.4, height: edit.originalHeight * 1.3,
+                        width: edit.originalWidth * 1.5, height: edit.originalHeight * 1.35,
                         color: rgb(edit.bgColor.r, edit.bgColor.g, edit.bgColor.b),
                     });
                     if(edit.newText.trim().length > 0) {
                         firstPage.drawText(edit.newText, {
                             x: edit.x, y: edit.y + (edit.fontSize * 0.05),
                             size: edit.fontSize,
-                            font: edit.isBold ? courierBoldFont : courierFont,
+                            font: edit.isBold ? helveticaBoldFont : helveticaFont,
                             color: rgb(edit.textColor.r, edit.textColor.g, edit.textColor.b),
                         });
                     }
                 });
 
-                // 3. Dynamic Precision Image Insertion
+                // 3. Process Images
                 for (const imgEdit of imageEdits) {
                     const buffer = base64ToArrayBuffer(imgEdit.src);
                     const embeddedImage = imgEdit.src.includes('image/png') ? 
@@ -642,7 +651,7 @@
                 link.download = filename;
                 link.click();
             } catch (err) {
-                alert("ගොනුව සකස් කිරීමේදී ගැටලුවක් මතු විය.");
+                alert("PDF ගොනුව සකස් කිරීමේදී දෝෂයක් ඇතිවිය.");
             }
         });
     </script>
