@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced PDF Editor</title>
+    <!-- Tailwind CSS for Styling -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- pdf-lib Library for PDF Manipulation -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <style>
+        #canvas-container {
+            position: relative;
+            border: 2px dashed #ccc;
+            display: inline-block;
+        }
+        .draggable {
+            position: absolute;
+            cursor: move;
+            user-select: none;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px dashed #3b82f6;
+            padding: 2px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+
+    <div class="container mx-auto p-6">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">PDF Editor & Modifier</h1>
+        
+        <!-- Controls Toolbar -->
+        <div class="bg-white p-4 rounded-lg shadow-md mb-6 flex flex-wrap gap-4 items-center justify-between">
+            <div class="flex items-center gap-2">
+                <input type="file" id="pdf-upload" accept=".pdf" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+            </div>
+            
+            <div class="flex flex-wrap gap-2">
+                <input type="text" id="text-input" placeholder="මෙතන ලියන්න..." class="border rounded px-3 py-2 text-sm w-48 focus:outline-blue-500">
+                <button id="add-text-btn" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 transition">Text එකක් දාන්න</button>
+                <button id="erase-mode-btn" class="bg-red-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-red-600 transition">අකුරු මකන්න (Whiteout)</button>
+                <button id="download-btn" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-700 transition">PDF එක බාගන්න</button>
+            </div>
+        </div>
+
+        <!-- Editor Area -->
+        <div class="text-center">
+            <div id="canvas-container" class="bg-white shadow-lg rounded hidden">
+                <canvas id="pdf-canvas"></canvas>
+            </div>
+            <p id="placeholder-text" class="text-gray-500 mt-20">කරුණාකර PDF එකක් අප්ලෝඩ් කරන්න...</p>
+        </div>
+    </div>
+
+    <!-- PDF Rendering with PDF.js (CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+        let pdfDoc = null;
+        let originalBytes = null;
+        let canvas = document.getElementById('pdf-canvas');
+        let ctx = canvas.getContext('2d');
+        let container = document.getElementById('canvas-container');
+        let eraseMode = false;
+
+        // Load and Render PDF
+        document.getElementById('pdf-upload').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const fileReader = new FileReader();
+            fileReader.onload = async function() {
+                originalBytes = new Uint8Array(this.result);
+                
+                // Render Page 1 using PDF.js
+                const loadingTask = pdfjsLib.getDocument({data: originalBytes});
+                pdfDoc = await loadingTask.promise;
+                const page = await pdfDoc.getPage(1);
+                
+                const viewport = page.getViewport({scale: 1.5});
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+                await page.render(renderContext).promise;
+                
+                document.getElementById('placeholder-text').classList.add('hidden');
+                container.classList.remove('hidden');
+            };
+            fileReader.readAsArrayBuffer(file);
+        });
+
+        // Add Draggable Text Over Images/Content
+        document.getElementById('add-text-btn').addEventListener('click', () => {
+            const textValue = document.getElementById('text-input').value;
+            if (!textValue) return alert('කරුණාකර අකුරු ටයිප් කරන්න!');
+
+            const textDiv = document.createElement('div');
+            textDiv.className = 'draggable text-black font-semibold absolute';
+            textDiv.innerText = textValue;
+            textDiv.style.left = '50px';
+            textDiv.style.top = '50px';
+            textDiv.style.fontSize = '18px';
+
+            makeElementDraggable(textDiv);
+            container.appendChild(textDiv);
+            document.getElementById('text-input').value = '';
+        });
+
+        // Erase Mode (Draw white box over text/images to "erase" them)
+        document.getElementById('erase-mode-btn').addEventListener('click', () => {
+            eraseMode = !eraseMode;
+            if (eraseMode) {
+                document.getElementById('erase-mode-btn').className = "bg-yellow-600 text-white px-4 py-2 rounded text-sm font-medium";
+                document.getElementById('erase-mode-btn').innerText = "Eraser Active (Click canvas)";
+            } else {
+                document.getElementById('erase-mode-btn').className = "bg-red-500 text-white px-4 py-2 rounded text-sm font-medium hover:bg-red-600";
+                document.getElementById('erase-mode-btn').innerText = "අකුරු මකන්න (Whiteout)";
+            }
+        });
+
+        canvas.addEventListener('click', (e) => {
+            if (!eraseMode) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // Create a white block acting as an eraser
+            const eraserBlock = document.createElement('div');
+            eraserBlock.className = 'draggable bg-white border-none absolute';
+            eraserBlock.style.width = '80px';
+            eraserBlock.style.height = '25px';
+            eraserBlock.style.backgroundColor = 'white';
+            eraserBlock.style.left = `${x - 40}px`;
+            eraserBlock.style.top = `${y - 12}px`;
+
+            makeElementDraggable(eraserBlock);
+            container.appendChild(eraserBlock);
+        });
+
+        // Drag and Drop Logic
+        function makeElementDraggable(elmnt) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            elmnt.onmousedown = dragMouseDown;
+
+            function dragMouseDown(e) {
+                e = e || window.event;
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            }
+
+            function elementDrag(e) {
+                e = e || window.event;
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+                elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+            }
+
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
+        }
+
+        // Save & Download modified PDF using pdf-lib
+        document.getElementById('download-btn').addEventListener('click', async () => {
+            if (!originalBytes) return alert('මුලින්ම PDF එකක් දාන්න.');
+
+            const { PDFDocument, rgb } = PDFLib;
+            const pdfDocInstance = await PDFDocument.load(originalBytes);
+            const pages = pdfDocInstance.getPages();
+            const firstPage = pages[0];
+            const { height } = firstPage.getSize();
+
+            const scaleX = firstPage.getWidth() / canvas.width;
+            const scaleY = firstPage.getHeight() / canvas.height;
+
+            const modifications = container.querySelectorAll('.draggable');
+            modifications.forEach(mod => {
+                const x = parseFloat(mod.style.left) * scaleX;
+                const y = height - (parseFloat(mod.style.top) * scaleY) - (parseFloat(mod.style.height || 20) * scaleY);
+
+                if (mod.innerText) {
+                    // Draw Text
+                    firstPage.drawText(mod.innerText, {
+                        x: x,
+                        y: y,
+                        size: 16 * scaleY,
+                        color: rgb(0, 0, 0),
+                    });
+                } else {
+                    // Draw White Box (Eraser)
+                    const w = parseFloat(mod.style.width) * scaleX;
+                    const h = parseFloat(mod.style.height) * scaleY;
+                    firstPage.drawRectangle({
+                        x: x,
+                        y: y,
+                        width: w,
+                        height: h,
+                        color: rgb(1, 1, 1),
+                    });
+                }
+            });
+
+            const pdfBytes = await pdfDocInstance.save();
+            const blob = new Blob([pdfBytes], { type: "application/pdf" });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = "edited_project.pdf";
+            link.click();
+        });
+    </script>
+</body>
+</html>
+
