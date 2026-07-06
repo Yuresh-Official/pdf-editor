@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CV Studio PDF Editor - Multi-line Text Box Added</title>
+    <title>CV Studio PDF Editor - Smart Multi-line Text Box</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     
@@ -82,7 +82,7 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
 
-        /* Draggable Components Container (Images & Custom Textboxes) */
+        /* Components Styling */
         .dropped-image, .custom-text-box {
             position: absolute;
             cursor: move;
@@ -92,13 +92,11 @@
         }
         
         .dropped-image { border: 2px dashed #10b981; }
-        .custom-text-box { border: 2px dashed #8b5cf6; background: rgba(255,255,255,0.9); }
+        .custom-text-box { border: 2px dashed #8b5cf6; background: rgba(255,255,255,0.85); }
 
-        .dropped-image.locked, .custom-text-box.locked {
-            border: 2px solid transparent;
-            background: transparent;
-        }
-        .custom-text-box.locked { background: transparent; }
+        .dropped-image.locked { border: 2px solid transparent; background: transparent; }
+        /* Matches page background seamlessly when locked */
+        .custom-text-box.locked { border: 2px solid transparent; background: transparent; }
 
         .dropped-image.locked:hover { border: 2px dashed #3b82f6; }
         .custom-text-box.locked:hover { border: 2px dashed #8b5cf6; }
@@ -162,7 +160,7 @@
                 📷 Add Photo
             </button>
 
-            <!-- New Drag & Drop Multi-line Text Box Button -->
+            <!-- Text Box Button -->
             <button id="add-textbox-btn" class="bg-violet-700 hover:bg-violet-600 text-white px-3 py-2 rounded-md text-xs font-bold disabled:opacity-40" disabled>
                 ✏️ Add Text Box (රූල් 2/3)
             </button>
@@ -184,7 +182,7 @@
         </div>
     </div>
 
-    <!-- Workspace Studio Studio Viewport -->
+    <!-- Workspace Viewport -->
     <div class="flex-1 w-full flex justify-center items-start">
         <div id="editor-workspace" class="w-full flex justify-center">
             <div id="placeholder" class="text-center mt-20 p-12 border-2 border-dashed border-slate-800 bg-slate-900/50 rounded-3xl max-w-sm w-full">
@@ -213,7 +211,7 @@
 
         let textEdits = {}; 
         let imageEdits = []; 
-        let customTextBoxes = []; // Holds custom multiline scalable draggable textboxes
+        let customTextBoxes = []; 
         let eraseDrawings = []; 
         let isEraseModeActive = false; 
         let isDrawing = false;
@@ -482,7 +480,7 @@
             window.addEventListener('touchend', finishEraseStroke);
         }
 
-        // Image Engine Handlers
+        // Image Engine
         dropZone.addEventListener('click', () => imageUpload.click());
         addImageBtn.addEventListener('click', () => imageUpload.click());
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -566,10 +564,10 @@
                 imageTrackingObj.y = originalPageHeight - ((updatedTop + updatedHeight) / pdfScale);
                 imageTrackingObj.w = updatedWidth / pdfScale;
                 imageTrackingObj.h = updatedHeight / pdfScale;
-            }, false);
+            });
         }
 
-        // NEW: Multi-line Custom Scalable Draggable Textbox Generator
+        // Multi-line Custom Textbox Generator with auto color matching
         addTextboxBtn.addEventListener('click', () => {
             const boxId = 'box_' + Date.now();
             const wrapper = document.createElement('div');
@@ -581,7 +579,7 @@
             wrapper.style.height = '90px';
 
             const textarea = document.createElement('textarea');
-            textarea.placeholder = "මෙහි රූල් 2ක් හෝ 3ක් කැමති විස්තරයක් ටයිප් කරන්න...";
+            textarea.placeholder = "මෙහි ලියන්න (Bold කිරීමට වචනය දෙපැත්තට * යොදන්න)...";
             textarea.style.width = '100%';
             textarea.style.height = '100%';
             textarea.style.background = 'transparent';
@@ -592,7 +590,6 @@
             textarea.style.padding = '4px';
             textarea.style.fontFamily = "'Helvetica Neue', Helvetica, Arial, sans-serif";
             
-            // Dynamic initial font size calculation based on box height
             let currentFontSize = 14; 
             textarea.style.fontSize = currentFontSize + 'px';
             wrapper.appendChild(textarea);
@@ -616,14 +613,33 @@
 
             pageWrapper.appendChild(wrapper);
 
+            // Automatically detect background text color under textbox placement
+            let detectedTextR = 0, detectedTextG = 0, detectedTextB = 0;
+            const updateTextColorBasedOnBackground = () => {
+                const sampleX = wrapper.offsetLeft + 10;
+                const sampleY = wrapper.offsetTop + 10;
+                const bgPixel = ctx.getImageData(sampleX, sampleY, 1, 1).data;
+                const brightness = (bgPixel[0] * 299 + bgPixel[1] * 587 + bgPixel[2] * 114) / 1000;
+                
+                // If light background -> text is black, if dark background -> text is white
+                if (brightness > 128) {
+                    detectedTextR = 0; detectedTextG = 0; detectedTextB = 0;
+                } else {
+                    detectedTextR = 255; detectedTextG = 255; detectedTextB = 255;
+                }
+                textarea.style.color = `rgb(${detectedTextR}, ${detectedTextG}, ${detectedTextB})`;
+            };
+            updateTextColorBasedOnBackground();
+
             let textBoxObj = {
                 id: boxId,
                 x: 100 / pdfScale,
                 y: originalPageHeight - ((150 + 90) / pdfScale),
                 w: 220 / pdfScale,
                 h: 90 / pdfScale,
-                fontSize: currentFontSize / pdfScale, // Convert to PDF point scale
-                text: ""
+                fontSize: currentFontSize / pdfScale, 
+                text: "",
+                textColor: { r: 0, g: 0, b: 0 } 
             };
             customTextBoxes.push(textBoxObj);
 
@@ -632,8 +648,12 @@
             confirmBtn.onclick = (e) => {
                 e.stopPropagation();
                 if(!textarea.value.trim()){ wrapper.remove(); return; }
+                
+                updateTextColorBasedOnBackground(); // Recalculate colors just before locking
+                textBoxObj.textColor = { r: detectedTextR / 255, g: detectedTextG / 255, b: detectedTextB / 255 };
+
                 wrapper.classList.add('locked');
-                textarea.style.pointerEvents = 'none'; // Lock editing temporarily
+                textarea.style.pointerEvents = 'none'; 
                 btnContainer.style.display = 'none'; resizeHandle.style.display = 'none';
             };
 
@@ -646,22 +666,21 @@
                 }
             };
 
-            // Setup movement logic + dynamic text font size scaling on wrapper resizing
             setupDraggableInteractions(wrapper, resizeHandle, (updatedLeft, updatedTop, updatedWidth, updatedHeight) => {
                 textBoxObj.x = updatedLeft / pdfScale;
                 textBoxObj.y = originalPageHeight - ((updatedTop + updatedHeight) / pdfScale);
                 textBoxObj.w = updatedWidth / pdfScale;
                 textBoxObj.h = updatedHeight / pdfScale;
                 
-                // Super Font Scaling Formula: Automatically adjusts font size as the user scales the text box
                 currentFontSize = Math.max(8, Math.floor(updatedHeight * 0.16)); 
                 textarea.style.fontSize = currentFontSize + 'px';
                 textBoxObj.fontSize = currentFontSize / pdfScale;
-            }, true);
+                updateTextColorBasedOnBackground();
+            });
         });
 
-        // Unified Draggable & Resizable Architecture Engine
-        function setupDraggableInteractions(element, handle, onUpdate, isTextBox = false) {
+        // Universal Movements Handler
+        function setupDraggableInteractions(element, handle, onUpdate) {
             const startDrag = (e) => {
                 if (element.classList.contains('locked') || e.target === handle || e.target.classList.contains('action-btn') || e.target.tagName === 'TEXTAREA') return;
                 e.preventDefault();
@@ -725,7 +744,7 @@
             return uint8Array.buffer;
         }
 
-        // Export Downloader
+        // Export Compilation Downloader
         downloadBtn.addEventListener('click', async () => {
             if (!originalBytes) return;
             try {
@@ -766,23 +785,32 @@
                     }
                 });
 
-                // 3. NEW: Render Custom Multi-line Text Boxes with Font Size Adjustments
+                // 3. Render Custom Multi-line Text Boxes with Auto Colors and Bold Parsing
                 customTextBoxes.forEach(box => {
                     if (!box.text.trim()) return;
                     
                     const lines = box.text.split('\n');
-                    let currentYLinePosition = box.y + box.h - box.fontSize - 4; // Top down rendering setup
+                    let currentYLinePosition = box.y + box.h - box.fontSize - 4; 
 
                     lines.forEach(lineText => {
                         if(currentYLinePosition >= box.y) {
-                            firstPage.drawText(lineText, {
+                            let cleanLine = lineText;
+                            let drawFont = cvFont;
+
+                            // WhatsApp Bold Engine inside Multiline Textbox: Parses *text* patterns dynamically
+                            if (lineText.startsWith('*') && lineText.endsWith('*') && lineText.length > 1) {
+                                cleanLine = lineText.substring(1, lineText.length - 1);
+                                drawFont = cvFontBold;
+                            }
+
+                            firstPage.drawText(cleanLine, {
                                 x: box.x + 4,
                                 y: currentYLinePosition,
                                 size: box.fontSize,
-                                font: cvFont,
-                                color: rgb(0, 0, 0), // Standard professional black color text
+                                font: drawFont,
+                                color: rgb(box.textColor.r, box.textColor.g, box.textColor.b),
                             });
-                            currentYLinePosition -= (box.fontSize * 1.25); // Line spacing separator
+                            currentYLinePosition -= (box.fontSize * 1.35); 
                         }
                     });
                 });
@@ -817,4 +845,3 @@
     </script>
 </body>
 </html>
-
