@@ -10,7 +10,6 @@
     <style>
         body { background-color: #f1f5f9; user-select: none; }
         
-        /* 📱 ෆෝන් එකේ සීමාවෙන් පිටට නොයා scroll වෙන්න හදපු container එක */
         .workspace-scroll-container {
             width: 100%;
             overflow-x: auto;
@@ -21,7 +20,7 @@
             padding: 10px;
             background: #e2e8f0;
             border-radius: 8px;
-            max-height: calc(100vh - 160px); /* ෆෝන් එකේ උසට ගැලපෙන්න */
+            max-height: calc(100vh - 160px);
         }
 
         #viewer-container {
@@ -75,6 +74,7 @@
             cursor: move;
             border: 2px dashed #10b981;
             z-index: 30;
+            touch-action: none;
         }
 
         .image-delete-btn {
@@ -104,7 +104,7 @@
 
     <!-- Instruction Subbar -->
     <div class="bg-amber-50 border-b border-amber-200 p-2 text-center text-xs text-amber-900 font-medium">
-        👉 <b>💡 ෆෝන් එකෙන් කරන විට:</b> PDF එක සම්පූර්ණයෙන්ම බැලීමට දෙපැත්තට හෝ පල්ලෙහාට Scroll (අදින්න) කරන්න. ඕනෑම අකුරක් උඩ ක්ලික් කර වෙනස් කරන්න[span_4](start_span)[span_4](end_span)!
+        👉 <b>💡 ෆෝන් එකෙන් කරන විට:</b> PDF එක සම්පූර්ණයෙන්ම බැලීමට දෙපැත්තට හෝ පල්ලෙහාට Scroll කරන්න. ඕනෑම අකුරක් උඩ ක්ලික් කර වෙනස් කරන්න!
     </div>
 
     <!-- Workspace Area -->
@@ -114,7 +114,6 @@
                 <p class="text-gray-500 font-medium text-base">කරුණාකර වැඩ අරඹන්න PDF එකක් තෝරන්න...</p>
             </div>
             
-            <!-- Scroll Container wrapping the viewer -->
             <div id="scroll-box" class="workspace-scroll-container hidden">
                 <div id="viewer-container">
                     <div class="pdf-page-wrapper" id="page-wrapper">
@@ -130,7 +129,7 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
         let originalBytes = null;
-        let pdfScale = 1.2; // 🔎 ෆෝන් වලට ගැලපෙන පරිදි Scale එක මදක් අඩු කර ඇත
+        let pdfScale = 1.2; 
         let originalPageWidth = 0;
         let originalPageHeight = 0;
 
@@ -193,33 +192,58 @@
                 const span = document.createElement('span');
                 span.innerText = item.str;
                 
+                const computedTop = tx[5] - (item.height * pdfScale);
+                
                 span.style.left = `${tx[4]}px`;
-                span.style.top = `${tx[5] - (item.height * pdfScale)}px`; 
+                span.style.top = `${computedTop}px`; 
                 span.style.fontSize = `${item.height * pdfScale}px`;
                 span.style.fontFamily = 'sans-serif';
                 span.style.width = `${item.width * pdfScale}px`;
                 span.style.height = `${item.height * pdfScale}px`;
                 
-                // Click Handler for In-Place Edit[span_5](start_span)[span_5](end_span)
                 span.addEventListener('click', (e) => {
                     e.stopPropagation();
                     if (span.style.visibility === 'hidden') return;
                     
-                    const leftPos = tx[4];
-                    const topPos = tx[5] - (item.height * pdfScale);
-                    
-                    // Color Matching from Canvas[span_6](start_span)[span_6](end_span)
-                    const pixelData = ctx.getImageData(leftPos + 2, topPos + 2, 1, 1).data;
-                    const bgRGB = `rgb(${pixelData[0]}, ${pixelData[1]}, ${pixelData[2]})`;
+                    // 1. Get Background Color (from corner)
+                    const bgPixel = ctx.getImageData(tx[4] + 1, computedTop + 1, 1, 1).data;
+                    const bgRGB = `rgb(${bgPixel[0]}, ${bgPixel[1]}, ${bgPixel[2]})`;
 
-                    createInputOverlay(span, item, leftPos, topPos, bgRGB, pixelData[0], pixelData[1], pixelData[2]);
+                    // 2. Smart Text Color Detection (Scans the center area to find the font color)
+                    let textR = 0, textG = 0, textB = 0;
+                    let maxDist = -1;
+                    const startX = Math.floor(tx[4] + (item.width * pdfScale) * 0.2);
+                    const endX = Math.floor(tx[4] + (item.width * pdfScale) * 0.8);
+                    const startY = Math.floor(computedTop + (item.height * pdfScale) * 0.2);
+                    const endY = Math.floor(computedTop + (item.height * pdfScale) * 0.8);
+
+                    for (let x = startX; x < endX; x += Math.max(1, Math.floor((endX - startX) / 5))) {
+                        for (let y = startY; y < endY; y += Math.max(1, Math.floor((endY - startY) / 5))) {
+                            const p = ctx.getImageData(x, y, 1, 1).data;
+                            const dist = Math.abs(p[0] - bgPixel[0]) + Math.abs(p[1] - bgPixel[1]) + Math.abs(p[2] - bgPixel[2]);
+                            if (dist > maxDist) {
+                                maxDist = dist;
+                                textR = p[0]; textG = p[1]; textB = p[2];
+                            }
+                        }
+                    }
+
+                    // Fallback if it's too close to background
+                    if (maxDist < 40) {
+                        const brightness = (bgPixel[0] * 299 + bgPixel[1] * 587 + bgPixel[2] * 114) / 1000;
+                        textR = textG = textB = brightness > 128 ? 0 : 255;
+                    }
+
+                    const textRGB = `rgb(${textR}, ${textG}, ${textB})`;
+
+                    createInputOverlay(span, item, tx[4], computedTop, bgRGB, bgPixel, textRGB, textR, textG, textB);
                 });
 
                 textLayerDiv.appendChild(span);
             });
         }
 
-        function createInputOverlay(span, item, leftPos, topPos, bgRGB, r, g, b) {
+        function createInputOverlay(span, item, leftPos, topPos, bgRGB, bgPixel, textRGB, textR, textG, textB) {
             span.style.visibility = 'hidden';
 
             const input = document.createElement('input');
@@ -232,6 +256,7 @@
             input.style.width = `${(item.width * pdfScale) + 15}px`;
             input.style.height = `${item.height * pdfScale * 1.1}px`;
             input.style.backgroundColor = bgRGB;
+            input.style.color = textRGB; // Input text matches original PDF text color
 
             pageWrapper.appendChild(input);
             input.focus();
@@ -246,13 +271,16 @@
                         fontSize: item.height,
                         originalWidth: (item.width * pdfScale) / pdfScale,
                         originalHeight: item.height,
-                        bgColor: { r: r/255, g: g/255, b: b/255 }
+                        bgColor: { r: bgPixel[0]/255, g: bgPixel[1]/255, b: bgPixel[2]/255 },
+                        textColor: { r: textR/255, g: textG/255, b: textB/255 }
                     });
                     
+                    // Clear old text with background color
                     ctx.fillStyle = bgRGB;
-                    ctx.fillRect(leftPos, topPos, (item.width * pdfScale) + 10, item.height * pdfScale * 1.1);
+                    ctx.fillRect(leftPos, topPos, (item.width * pdfScale) + 15, item.height * pdfScale * 1.1);
                     
-                    ctx.fillStyle = '#000000';
+                    // Redraw new text with detected original color
+                    ctx.fillStyle = textRGB;
                     ctx.font = `${item.height * pdfScale}px sans-serif`;
                     ctx.fillText(input.value, leftPos, topPos + (item.height * pdfScale * 0.85));
                 } else {
@@ -317,7 +345,6 @@
             };
             imageEdits.push(currentEdit);
 
-            // Touch & Mouse Drag support for mobile/PC
             const dragStart = (e) => {
                 if (e.target === deleteBtn) return;
                 let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
@@ -354,49 +381,74 @@
             wrapper.addEventListener('touchstart', dragStart, { passive: true });
         }
 
+        function base64ToArrayBuffer(base64DataUrl) {
+            const base64Str = base64DataUrl.split(',')[1];
+            const binaryStr = window.atob(base64Str);
+            const len = binaryStr.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryStr.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
         // --- Download Generated PDF ---
         downloadBtn.addEventListener('click', async () => {
             if (!originalBytes) return;
-            const { PDFDocument, rgb } = PDFLib;
-            const pdfDocInstance = await PDFDocument.load(originalBytes);
-            const firstPage = pdfDocInstance.getPages()[0];
-
-            textEdits.forEach(edit => {
-                firstPage.drawRectangle({
-                    x: edit.x,
-                    y: edit.y - 2,
-                    width: edit.originalWidth * 1.2,
-                    height: edit.originalHeight * 1.3,
-                    color: rgb(edit.bgColor.r, edit.bgColor.g, edit.bgColor.b),
-                });
+            try {
+                const { PDFDocument, rgb, StandardFonts } = PDFLib;
+                const pdfDocInstance = await PDFDocument.load(originalBytes);
+                const firstPage = pdfDocInstance.getPages()[0];
                 
-                firstPage.drawText(edit.newText, {
-                    x: edit.x,
-                    y: edit.y + (edit.fontSize * 0.1),
-                    size: edit.fontSize,
-                    color: rgb(0, 0, 0),
-                });
-            });
+                const helveticaFont = await pdfDocInstance.embedFont(StandardFonts.Helvetica);
 
-            for (const imgEdit of imageEdits) {
-                const imgDataBytes = await fetch(imgEdit.src).then(res => res.arrayBuffer());
-                const embeddedImg = imgEdit.src.includes('image/png') ? 
-                    await pdfDocInstance.embedPng(imgDataBytes) : await pdfDocInstance.embedJpg(imgDataBytes);
+                textEdits.forEach(edit => {
+                    const cleanText = edit.newText.replace(/[^\x20-\x7E]/g, '');
 
-                firstPage.drawImage(embeddedImg, {
-                    x: imgEdit.x,
-                    y: imgEdit.y,
-                    width: imgEdit.w,
-                    height: imgEdit.h
+                    // Draw background block
+                    firstPage.drawRectangle({
+                        x: edit.x,
+                        y: edit.y - 2,
+                        width: edit.originalWidth * 1.3,
+                        height: edit.originalHeight * 1.3,
+                        color: rgb(edit.bgColor.r, edit.bgColor.g, edit.bgColor.b),
+                    });
+                    
+                    // Draw text in matching original color
+                    if(cleanText.length > 0) {
+                        firstPage.drawText(cleanText, {
+                            x: edit.x,
+                            y: edit.y + (edit.fontSize * 0.1),
+                            size: edit.fontSize,
+                            font: helveticaFont,
+                            color: rgb(edit.textColor.r, edit.textColor.g, edit.textColor.b),
+                        });
+                    }
                 });
+
+                for (const imgEdit of imageEdits) {
+                    const imgDataBytes = base64ToArrayBuffer(imgEdit.src);
+                    const embeddedImg = imgEdit.src.includes('image/png') ? 
+                        await pdfDocInstance.embedPng(imgDataBytes) : await pdfDocInstance.embedJpg(imgDataBytes);
+
+                    firstPage.drawImage(embeddedImg, {
+                        x: imgEdit.x,
+                        y: imgEdit.y,
+                        width: imgEdit.w,
+                        height: imgEdit.h
+                    });
+                }
+
+                const finalPdfBytes = await pdfDocInstance.save();
+                const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = "edited_document.pdf";
+                link.click();
+            } catch (err) {
+                console.error("PDF Compiling Error: ", err);
+                alert("Something went wrong while compiling your changes.");
             }
-
-            const finalPdfBytes = await pdfDocInstance.save();
-            const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = "responsive_perfect_edited.pdf";
-            link.click();
         });
     </script>
 </body>
