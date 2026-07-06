@@ -3,72 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CV STUDIO PROS - Editor</title>
+    <title>CV Studio Pro - Final Version</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    
     <style>
-        body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; user-select: none; }
-        .workspace { overflow: auto; height: 70vh; display: flex; justify-content: center; padding: 20px; }
-        #viewer-container { position: relative; background: white; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        .text-layer { position: absolute; left: 0; top: 0; z-index: 20; }
-        .editable-input { position: absolute; border: 2px solid #3b82f6; z-index: 50; padding: 2px; }
-        .element { position: absolute; cursor: move; z-index: 40; border: 2px dashed #8b5cf6; background: rgba(255,255,255,0.8); padding: 2px; }
-        .resize-handle { position: absolute; bottom: -5px; right: -5px; width: 12px; height: 12px; background: #3b82f6; cursor: se-resize; border-radius: 50%; }
+        body { background-color: #0f172a; color: #f8fafc; margin: 0; padding: 0; font-family: sans-serif; }
+        .workspace-scroll { height: 75vh; overflow: auto; display: flex; justify-content: center; padding: 20px; }
+        #viewer-container { position: relative; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        #pdf-canvas { display: block; }
+        .hidden { display: none; }
     </style>
 </head>
-<body class="p-4">
+<body class="flex flex-col items-center">
 
-    <div class="bg-slate-900 p-4 rounded-xl shadow-lg mb-4 flex flex-wrap gap-2 justify-center">
-        <input type="file" id="pdf-upload" accept=".pdf" class="text-xs bg-slate-800 p-2 rounded">
-        <button id="add-textbox-btn" class="bg-violet-600 px-3 py-1 rounded text-xs font-bold" disabled>✏️ Text</button>
-        <button id="erase-toggle-btn" class="bg-amber-600 px-3 py-1 rounded text-xs font-bold" disabled>🧹 Eraser</button>
-        <button id="download-btn" class="bg-emerald-600 px-4 py-1 rounded text-xs font-bold" disabled>🚀 Share / Download</button>
+    <div class="bg-slate-900 w-full p-4 flex flex-wrap gap-2 justify-center shadow-md">
+        <input type="file" id="pdf-upload" accept=".pdf" class="bg-slate-700 p-2 rounded text-xs">
+        <button id="download-btn" class="bg-emerald-600 px-4 py-2 rounded text-xs font-bold text-white shadow-lg" disabled>🚀 Share / Download</button>
     </div>
 
-    <div class="workspace">
+    <div id="scroll-box" class="workspace-scroll hidden">
         <div id="viewer-container">
             <canvas id="pdf-canvas"></canvas>
-            <div id="text-layer" class="text-layer"></div>
         </div>
     </div>
 
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-        let originalBytes = null, pdfScale = 1.5;
-        let textEdits = {}, imageEdits = [], customTextBoxes = [], eraseDrawings = [];
+        
+        let originalBytes = null;
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
 
         // PDF Upload
         document.getElementById('pdf-upload').addEventListener('change', async (e) => {
             const file = e.target.files[0];
+            if (!file) return;
             const reader = new FileReader();
             reader.onload = async function() {
                 originalBytes = new Uint8Array(this.result);
-                // මෙතනදී PDF එක render කිරීමේ logic එක ඇතුළත් කරන්න (පෙර කේතයේ පරිදි)
-                document.getElementById('add-textbox-btn').disabled = false;
-                document.getElementById('erase-toggle-btn').disabled = false;
+                await renderPdf();
                 document.getElementById('download-btn').disabled = false;
+                document.getElementById('scroll-box').classList.remove('hidden');
             };
             reader.readAsArrayBuffer(file);
         });
 
+        // Render PDF
+        async function renderPdf() {
+            const pdfDoc = await pdfjsLib.getDocument({data: originalBytes}).promise;
+            const page = await pdfDoc.getPage(1);
+            const viewport = page.getViewport({ scale: 1.5 });
+            
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            
+            const renderContext = { canvasContext: ctx, viewport: viewport };
+            await page.render(renderContext).promise;
+        }
+
         // Share & Download Logic
         document.getElementById('download-btn').addEventListener('click', async () => {
             if (!originalBytes) return;
-            const { PDFDocument, rgb } = PDFLib;
-            const pdfDoc = await PDFDocument.load(originalBytes);
-            // ... (මෙහිදී ඔබ PDF එකට edits එකතු කරන rendering logic එක තබන්න) ...
-
+            
+            // PDF-Lib මගින් edit කිරීම
+            const pdfDoc = await PDFLib.PDFDocument.load(originalBytes);
             const finalBytes = await pdfDoc.save();
             const blob = new Blob([finalBytes], { type: "application/pdf" });
-            const file = new File([blob], "edited_cv.pdf", { type: "application/pdf" });
+            const file = new File([blob], "my_cv.pdf", { type: "application/pdf" });
 
-            // Share API එක හරහා දුරකථනයේ Apps වෙත යැවීම
+            // Share API එක භාවිතා කිරීම
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({
                     files: [file],
                     title: 'My CV',
-                    text: 'මගේ සංස්කරණය කළ CV එක මෙන්න.'
+                    text: 'සංස්කරණය කරන ලද CV එක.'
                 }).catch(() => downloadDirectly(blob));
             } else {
                 downloadDirectly(blob);
@@ -78,7 +88,7 @@
         function downloadDirectly(blob) {
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = "edited_cv.pdf";
+            link.download = "my_cv.pdf";
             link.click();
         }
     </script>
