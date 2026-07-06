@@ -20,7 +20,7 @@
             padding: 10px;
             background: #e2e8f0;
             border-radius: 8px;
-            max-height: calc(100vh - 160px);
+            max-height: calc(100vh - 180px);
         }
 
         #viewer-container {
@@ -69,12 +69,17 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
 
-        .dropped-image {
+        .dropped-image, .pdf-image-eraser {
             position: absolute;
             cursor: move;
             border: 2px dashed #10b981;
             z-index: 30;
             touch-action: none;
+        }
+        
+        .pdf-image-eraser {
+            border: 2px dashed #ef4444;
+            background: rgba(239, 68, 68, 0.1);
         }
 
         .image-delete-btn {
@@ -96,6 +101,13 @@
         </div>
         <div class="flex items-center gap-4 flex-wrap">
             <input type="file" id="pdf-upload" accept=".pdf" class="text-sm text-gray-300 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"/>
+            
+            <!-- Hidden Image Input and Custom Button -->
+            <input type="file" id="image-upload" accept="image/*" class="hidden" />
+            <button id="add-image-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition shadow-md disabled:opacity-50" disabled>
+                📷 Add Image
+            </button>
+            
             <button id="download-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-md text-sm font-semibold transition shadow-md disabled:opacity-50" disabled>
                 Download PDF
             </button>
@@ -104,7 +116,7 @@
 
     <!-- Instruction Subbar -->
     <div class="bg-amber-50 border-b border-amber-200 p-2 text-center text-xs text-amber-900 font-medium">
-        👉 <b>💡 විශේෂ විශේෂාංග:</b> වෙනස් කරන අකුරු Bold කිරීමට දෙපැත්තට තරුව යොදන්න (උදා: *TEXT*). මුල් PDF එකේ Bold තිබූ අකුරු ස්වයංක්‍රීයව හඳුනාගනී!
+        🔥 <b>අලුත් විශේෂාංග:</b> 1. වෙනස් කළ Text නැවත ක්ලික් කර වෙනස් කළ හැක. 2. PDF එකේ ඇති පින්තූරයක් මැකීමට ඒ මත ක්ලික් කරන්න. 3. <b>📷 Add Image</b> බටන් එකෙන් ෆෝන් එකෙන් වුවද පින්තූර එක් කළ හැක!
     </div>
 
     <!-- Workspace Area -->
@@ -133,10 +145,13 @@
         let originalPageWidth = 0;
         let originalPageHeight = 0;
 
-        let textEdits = []; 
+        let textEdits = {}; // ID එකකින් Text Edits ට්‍රැක් කරනවා (නැවත වෙනස් කරන්න පුළුවන් වෙන්න)
         let imageEdits = []; 
+        let imageErasers = []; // PDF එකේ මුල් පින්තූර මකන ලැයිස්තුව
 
         const pdfUpload = document.getElementById('pdf-upload');
+        const imageUpload = document.getElementById('image-upload');
+        const addImageBtn = document.getElementById('add-image-btn');
         const downloadBtn = document.getElementById('download-btn');
         const placeholder = document.getElementById('placeholder');
         const scrollBox = document.getElementById('scroll-box');
@@ -153,12 +168,14 @@
             const reader = new FileReader();
             reader.onload = async function() {
                 originalBytes = new Uint8Array(this.result);
-                textEdits = [];
+                textEdits = {};
                 imageEdits = [];
-                document.querySelectorAll('.dropped-image, .editable-input').forEach(el => el.remove());
+                imageErasers = [];
+                document.querySelectorAll('.dropped-image, .editable-input, .pdf-image-eraser').forEach(el => el.remove());
                 
                 await renderPdfPage();
                 downloadBtn.disabled = false;
+                addImageBtn.disabled = false;
                 placeholder.classList.add('hidden');
                 scrollBox.classList.remove('hidden');
             };
@@ -183,13 +200,31 @@
             await page.render(renderContext).promise;
 
             textLayerDiv.innerHTML = '';
-            const textContent = await page.getTextContent();
             
+            // --- PDF එකේ ඇති පින්තූර උඩ ක්ලික් කර මැකීමේ විශේෂාංගය ---
+            page.getOperatorList().then((opList) => {
+                const validImages = [];
+                for (let i = 0; i < opList.fnArray.length; i++) {
+                    if (opList.fnArray[i] === pdfjsLib.OPS.paintXObject || opList.fnArray[i] === pdfjsLib.OPS.paintJpegXObject) {
+                        const args = opList.argsArray[i];
+                        // මෙයින් පින්තූරයේ පිහිටීම (Transform Matrix) ලබා ගනී
+                        validImages.push(args[0]);
+                    }
+                }
+            });
+
+            // Canvas එක මත ඇති පින්තූර ක්ලික් කර මැකීමට Listener එකක්
+            viewerContainer.addEventListener('click', handleCanvasImageClick);
+
+            const textContent = await page.getTextContent();
+            let idx = 0;
             textContent.items.forEach((item) => {
                 if (!item.str.trim()) return;
+                idx++;
 
                 const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
                 const span = document.createElement('span');
+                span.id = 'span_' + idx;
                 span.innerText = item.str;
                 
                 const computedTop = tx[5] - (item.height * pdfScale);
@@ -201,12 +236,10 @@
                 span.style.width = `${item.width * pdfScale}px`;
                 span.style.height = `${item.height * pdfScale}px`;
                 
-                // PDF Metadata එකෙන් Font එක Bold ද කියා බැලීම
                 const isFontBold = item.fontName.toLowerCase().includes('bold') || item.fontName.toLowerCase().includes('goth') || item.fontName.toLowerCase().includes('black');
 
                 span.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    if (span.style.visibility === 'hidden') return;
                     
                     const bgPixel = ctx.getImageData(tx[4] + 1, computedTop + 1, 1, 1).data;
                     const bgRGB = `rgb(${bgPixel[0]}, ${bgPixel[1]}, ${bgPixel[2]})`;
@@ -236,31 +269,32 @@
 
                     const textRGB = `rgb(${textR}, ${textG}, ${textB})`;
 
-                    createInputOverlay(span, item, tx[4], computedTop, bgRGB, bgPixel, textRGB, textR, textG, textB, isFontBold);
+                    // දැනටමත් මේ span එක වෙනස් කරලා තියෙනවා නම් ඒ අගය ගන්න
+                    const currentActiveText = textEdits[span.id] ? textEdits[span.id].rawInput : (isFontBold ? `*${item.str}*` : item.str);
+
+                    createInputOverlay(span, item, tx[4], computedTop, bgRGB, bgPixel, textRGB, textR, textG, textB, isFontBold, currentActiveText);
                 });
 
                 textLayerDiv.appendChild(span);
             });
         }
 
-        function createInputOverlay(span, item, leftPos, topPos, bgRGB, bgPixel, textRGB, textR, textG, textB, isFontBold) {
+        function createInputOverlay(span, item, leftPos, topPos, bgRGB, bgPixel, textRGB, textR, textG, textB, isFontBold, currentActiveText) {
             span.style.visibility = 'hidden';
 
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'editable-input';
-            
-            // මුල් text එක bold නම් පෙන්නද්දීම තරුව සහිතව පෙන්වන්න (උදා: *NALIN*)
-            input.value = isFontBold ? `*${item.str}*` : item.str;
+            input.value = currentActiveText;
             
             input.style.left = `${leftPos}px`;
             input.style.top = `${topPos}px`;
             input.style.fontSize = `${item.height * pdfScale}px`;
-            input.style.width = `${(item.width * pdfScale) + 30}px`;
+            input.style.width = `${(item.width * pdfScale) + 40}px`;
             input.style.height = `${item.height * pdfScale * 1.1}px`;
             input.style.backgroundColor = bgRGB;
             input.style.color = textRGB;
-            if (isFontBold) input.style.fontWeight = 'bold';
+            if (currentActiveText.startsWith('*')) input.style.fontWeight = 'bold';
 
             pageWrapper.appendChild(input);
             input.focus();
@@ -269,39 +303,37 @@
             const saveEdits = () => {
                 let userValue = input.value;
                 let finalBoldState = isFontBold;
+                let rawInput = input.value; // නැවත සංස්කරණය සඳහා මුල් අගය තබා ගැනීම
 
-                // WhatsApp Style Bold Trigger Check (*text*)
                 if (userValue.startsWith('*') && userValue.endsWith('*') && userValue.length > 1) {
                     finalBoldState = true;
-                    userValue = userValue.substring(1, userValue.length - 1); // තරුව ඉවත් කරන්න
-                } else if (!isFontBold) {
+                    userValue = userValue.substring(1, userValue.length - 1);
+                } else {
                     finalBoldState = false;
                 }
 
-                if (userValue !== item.str || finalBoldState !== isFontBold) {
-                    textEdits.push({
-                        x: leftPos / pdfScale,
-                        y: originalPageHeight - (topPos / pdfScale) - item.height, 
-                        newText: userValue,
-                        fontSize: item.height,
-                        originalWidth: (item.width * pdfScale) / pdfScale,
-                        originalHeight: item.height,
-                        isBold: finalBoldState,
-                        bgColor: { r: bgPixel[0]/255, g: bgPixel[1]/255, b: bgPixel[2]/255 },
-                        textColor: { r: textR/255, g: textG/255, b: textB/255 }
-                    });
-                    
-                    // Canvas එක මත පැරණි කොටස මකා දැමීම
-                    ctx.fillStyle = bgRGB;
-                    ctx.fillRect(leftPos, topPos, (item.width * pdfScale) + 30, item.height * pdfScale * 1.1);
-                    
-                    // Canvas එක මත අලුත් text එක ඇඳීම
-                    ctx.fillStyle = textRGB;
-                    ctx.font = `${finalBoldState ? 'bold ' : ''}${item.height * pdfScale}px sans-serif`;
-                    ctx.fillText(userValue, leftPos, topPos + (item.height * pdfScale * 0.85));
-                } else {
-                    span.style.visibility = 'visible';
-                }
+                // හැමවෙලාවෙම අලුත් Edit එක සේව් කරගන්න (නැවත නැවත වෙනස් කිරීමට හැකිවීමට)
+                textEdits[span.id] = {
+                    x: leftPos / pdfScale,
+                    y: originalPageHeight - (topPos / pdfScale) - item.height, 
+                    newText: userValue,
+                    rawInput: rawInput,
+                    fontSize: item.height,
+                    originalWidth: (item.width * pdfScale) / pdfScale,
+                    originalHeight: item.height,
+                    isBold: finalBoldState,
+                    bgColor: { r: bgPixel[0]/255, g: bgPixel[1]/255, b: bgPixel[2]/255 },
+                    textColor: { r: textR/255, g: textG/255, b: textB/255 }
+                };
+                
+                // Canvas එක මත පැරණි කොටස වසා අලුත් අකුරු ලිවීම
+                ctx.fillStyle = bgRGB;
+                ctx.fillRect(leftPos - 2, topPos, (item.width * pdfScale) + 45, item.height * pdfScale * 1.15);
+                
+                ctx.fillStyle = textRGB;
+                ctx.font = `${finalBoldState ? 'bold ' : ''}${item.height * pdfScale}px sans-serif`;
+                ctx.fillText(userValue, leftPos, topPos + (item.height * pdfScale * 0.85));
+                
                 input.remove();
             };
 
@@ -311,7 +343,63 @@
             input.addEventListener('blur', saveEdits);
         }
 
-        // --- Drag & Drop Image Logic ---
+        // --- PDF එකේ දැනට තියෙන පින්තූරයක් උඩ ක්ලික් කර මකා දැමීම ---
+        function handleCanvasImageClick(e) {
+            // Text layer එකක් උඩ නෙමෙයි නම් ක්ලික් කලේ සහ placeholder එකක් උඩ නෙමෙයි නම්
+            if (e.target.tagName === 'SPAN' || e.target.classList.contains('editable-input') || e.target.closest('.dropped-image')) return;
+
+            const rect = viewerContainer.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            // පින්තූරයක් මැකීමට Whiteout block එකක් සාදන්න
+            const eraserId = 'erase_' + Date.now();
+            const eraser = document.createElement('div');
+            eraser.className = 'pdf-image-eraser';
+            eraser.style.left = `${clickX - 50}px`;
+            eraser.style.top = `${clickY - 50}px`;
+            eraser.style.width = '100px';
+            eraser.style.height = '100px';
+
+            const deleteBtn = document.createElement('div');
+            deleteBtn.className = 'image-delete-btn';
+            deleteBtn.innerText = '❌';
+            deleteBtn.onclick = (ev) => {
+                ev.stopPropagation();
+                
+                // Canvas එක මත සුදු පැහැති කොටසක් ඇඳ රූපය වසන්න
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(clickX - 50, clickY - 50, 100, 100);
+                
+                imageErasers.push({
+                    x: (clickX - 50) / pdfScale,
+                    y: originalPageHeight - ((clickY + 50) / pdfScale),
+                    w: 100 / pdfScale,
+                    h: 100 / pdfScale
+                });
+                eraser.remove();
+            };
+            
+            eraser.appendChild(deleteBtn);
+            pageWrapper.appendChild(eraser);
+
+            // Eraser එකත් Drag කරලා විශාලත්වය වෙනස් කරගන්න පුළුවන්
+            setupDragSupport(eraser, {w: 100, h:100}, (nl, nt) => {
+                // ඉවත් කරන තැන යාවත්කාලීන කිරීම සඳහා
+            });
+        }
+
+        // --- පින්තූර Button එකෙන් හෝ Drag & Drop මඟින් ඇතුළත් කිරීම ---
+        addImageBtn.addEventListener('click', () => imageUpload.click());
+        imageUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => createImageOverlay(event.target.result, 100, 100);
+                reader.readAsDataURL(file);
+            }
+        });
+
         viewerContainer.addEventListener('dragover', (e) => e.preventDefault());
         viewerContainer.addEventListener('drop', (e) => {
             e.preventDefault();
@@ -331,14 +419,14 @@
             const wrapper = document.createElement('div');
             wrapper.className = 'dropped-image';
             wrapper.id = imgId;
-            wrapper.style.left = `${x - 40}px`;
-            wrapper.style.top = `${y - 40}px`;
-            wrapper.style.width = '80px';
-            wrapper.style.height = '80px';
+            wrapper.style.left = `${x - 50}px`;
+            wrapper.style.top = `${y - 50}px`;
+            wrapper.style.width = '100px';
+            wrapper.style.height = '100px';
 
             const img = document.createElement('img');
             img.src = base64Src;
-            img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'cover';
+            img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'contain';
             wrapper.appendChild(img);
 
             const deleteBtn = document.createElement('div');
@@ -353,16 +441,23 @@
 
             const currentEdit = {
                 id: imgId,
-                x: (x - 40) / pdfScale,
-                y: originalPageHeight - ((y + 40) / pdfScale),
-                w: 80 / pdfScale,
-                h: 80 / pdfScale,
+                x: (x - 50) / pdfScale,
+                y: originalPageHeight - ((y + 50) / pdfScale),
+                w: 100 / pdfScale,
+                h: 100 / pdfScale,
                 src: base64Src
             };
             imageEdits.push(currentEdit);
 
+            setupDragSupport(wrapper, {w: 100, h: 100}, (nl, nt) => {
+                currentEdit.x = nl / pdfScale;
+                currentEdit.y = originalPageHeight - ((nt + wrapper.offsetHeight) / pdfScale);
+            });
+        }
+
+        function setupDragSupport(element, initialSize, onDragCallback) {
             const dragStart = (e) => {
-                if (e.target === deleteBtn) return;
+                if (e.target.classList.contains('image-delete-btn')) return;
                 let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
                 let clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
                 let startX = clientX, startY = clientY;
@@ -371,13 +466,12 @@
                     let curX = ev.type.includes('touch') ? ev.touches[0].clientX : ev.clientX;
                     let curY = ev.type.includes('touch') ? ev.touches[0].clientY : ev.clientY;
                     let dx = curX - startX, dy = curY - startY;
-                    let nl = wrapper.offsetLeft + dx, nt = wrapper.offsetTop + dy;
+                    let nl = element.offsetLeft + dx, nt = element.offsetTop + dy;
                     
-                    wrapper.style.left = nl + 'px'; wrapper.style.top = nt + 'px';
+                    element.style.left = nl + 'px'; element.style.top = nt + 'px';
                     startX = curX; startY = curY;
                     
-                    currentEdit.x = nl / pdfScale;
-                    currentEdit.y = originalPageHeight - ((nt + wrapper.offsetHeight) / pdfScale);
+                    onDragCallback(nl, nt);
                 };
 
                 const dragEnd = () => {
@@ -393,8 +487,8 @@
                 document.addEventListener('touchend', dragEnd);
             };
 
-            wrapper.addEventListener('mousedown', dragStart);
-            wrapper.addEventListener('touchstart', dragStart, { passive: true });
+            element.addEventListener('mousedown', dragStart);
+            element.addEventListener('touchstart', dragStart, { passive: true });
         }
 
         function base64ToArrayBuffer(base64DataUrl) {
@@ -416,14 +510,24 @@
                 const pdfDocInstance = await PDFDocument.load(originalBytes);
                 const firstPage = pdfDocInstance.getPages()[0];
                 
-                // Fonts දෙකම ලෝඩ් කරගැනීම (Regular සහ Bold)
                 const helveticaFont = await pdfDocInstance.embedFont(StandardFonts.Helvetica);
                 const helveticaBoldFont = await pdfDocInstance.embedFont(StandardFonts.HelveticaBold);
 
-                textEdits.forEach(edit => {
+                // 1. මුල් පින්තූර සුදු කර මැකීම (Apply Image Erasers)
+                imageErasers.forEach(eraser => {
+                    firstPage.drawRectangle({
+                        x: eraser.x,
+                        y: eraser.y,
+                        width: eraser.w,
+                        height: eraser.h,
+                        color: rgb(1, 1, 1), // White solid box
+                    });
+                });
+
+                // 2. අකුරු වෙනස් කිරීම් ඇතුළත් කිරීම (Apply Text Edits)
+                Object.values(textEdits).forEach(edit => {
                     const cleanText = edit.newText.replace(/[^\x20-\x7E]/g, '');
 
-                    // පසුබිම වර්ණයෙන් වැසීම
                     firstPage.drawRectangle({
                         x: edit.x,
                         y: edit.y - 2,
@@ -432,7 +536,6 @@
                         color: rgb(edit.bgColor.r, edit.bgColor.g, edit.bgColor.b),
                     });
                     
-                    // නිවැරදි Font එක සහ නිවැරදි වර්ණයෙන් PDF එක මත ලිවීම
                     if(cleanText.length > 0) {
                         firstPage.drawText(cleanText, {
                             x: edit.x,
@@ -444,6 +547,7 @@
                     }
                 });
 
+                // 3. අලුත් පින්තූර ඇතුළත් කිරීම (Apply New Images)
                 for (const imgEdit of imageEdits) {
                     const imgDataBytes = base64ToArrayBuffer(imgEdit.src);
                     const embeddedImg = imgEdit.src.includes('image/png') ? 
@@ -461,7 +565,7 @@
                 const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
-                link.download = "edited_document.pdf";
+                link.download = "perfect_edited_document.pdf";
                 link.click();
             } catch (err) {
                 console.error("PDF Compiling Error: ", err);
